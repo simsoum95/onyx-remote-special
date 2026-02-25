@@ -20,9 +20,10 @@ const CINEMA = {
         { id: 'media_player.qvlnv_byty', name: 'Apple TV', emoji: '🍎' },
     ],
     sources: [
+        { id: 'script.unknown_4', name: 'Netflix', emoji: '🎬' },
         { id: 'script.unknown_8', name: 'Apple TV', emoji: '📺' },
         { id: 'script.unknown_5', name: 'Fox', emoji: '🦊' },
-        { id: 'script.unknown_7', name: 'Paramount', emoji: '⭐' },
+        { id: 'script.unknown_7', name: 'Paramount+', emoji: '⭐' },
         { id: 'script.unknown_6', name: 'PlayStation', emoji: '🎮' },
     ],
 };
