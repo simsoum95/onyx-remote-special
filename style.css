@@ -174,20 +174,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .vol-range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; -webkit-appearance: none; direction: ltr; z-index: 2; }
 
 /* ============================================================
-   TAB 2: APPS
+   APPS GRID
    ============================================================ */
-.ftv-hero {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    width: 100%; padding: 20px; margin-bottom: 16px;
-    border-radius: var(--r); cursor: pointer;
-    background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(139,92,246,0.12));
-    border: 1px solid rgba(0,212,255,0.25);
-    transition: var(--tr);
-}
-.ftv-hero:active { transform: scale(0.96); }
-.ftv-hero-icon { font-size: 2rem; }
-.ftv-hero-name { font-size: 1.2rem; font-weight: 800; color: var(--t1); }
-
 .apps-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
 }
@@ -195,13 +183,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 18px 8px; border-radius: var(--rs);
     background: var(--glass); border: 1px solid var(--gb);
-    cursor: pointer; transition: var(--tr); gap: 8px;
-    min-height: 80px;
+    cursor: pointer; transition: var(--tr); gap: 10px;
+    min-height: 90px;
 }
 .app-tile:active { transform: scale(0.92); }
 .app-tile.active { border-color: var(--neon); background: rgba(0,212,255,0.1); }
-.app-e { font-size: 1.8rem; }
-.app-n { font-size: 0.7rem; font-weight: 600; color: var(--t2); }
+.app-logo { width: 36px; height: 36px; object-fit: contain; }
+.app-text-logo { font-size: 2rem; }
+.app-n { font-size: 0.72rem; font-weight: 600; color: var(--t2); }
 .app-tile.active .app-n { color: var(--neon); }
 
 /* ============================================================

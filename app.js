@@ -10,15 +10,15 @@ const SHIELD_MP = 'media_player.shield_2';
 const SHIELD_ADB = 'media_player.android_tv_192_168_1_80';
 
 const APPS = [
-    { name: 'Netflix', pkg: 'com.netflix.ninja', icon: '🎬' },
-    { name: 'Plex', pkg: 'com.plexapp.android', icon: '🎞️' },
-    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', icon: '▶️' },
-    { name: 'Amazon Prime', pkg: 'com.amazon.amazonvideo.livingroom', icon: '📦' },
-    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', icon: '🍎' },
-    { name: 'Disney+', pkg: 'com.disney.disneyplus', icon: '🏰' },
-    { name: 'Spotify', pkg: 'com.spotify.tv.android', icon: '🎵' },
-    { name: 'Mako', pkg: 'com.keshet.mako.VODAndroidTV', icon: '🔷' },
-    { name: 'PS5', pkg: null, input: 'GAME', icon: '🎮', console: true },
+    { name: 'FreeTV', pkg: 'tv.freetv.androidtv', logo: null, color: '#00d4ff' },
+    { name: 'Netflix', pkg: 'com.netflix.ninja', logo: 'https://cdn.simpleicons.org/netflix/E50914' },
+    { name: 'Plex', pkg: 'com.plexapp.android', logo: 'https://cdn.simpleicons.org/plex/E5A00D' },
+    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', logo: 'https://cdn.simpleicons.org/youtube/FF0000' },
+    { name: 'Prime Video', pkg: 'com.amazon.amazonvideo.livingroom', logo: 'https://cdn.simpleicons.org/primevideo/00A8E1' },
+    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', logo: 'https://cdn.simpleicons.org/appletv/FFFFFF' },
+    { name: 'Disney+', pkg: 'com.disney.disneyplus', logo: 'https://cdn.simpleicons.org/disneyplus/113CCF' },
+    { name: 'Spotify', pkg: 'com.spotify.tv.android', logo: 'https://cdn.simpleicons.org/spotify/1DB954' },
+    { name: 'PS5', pkg: null, input: 'GAME', logo: 'https://cdn.simpleicons.org/playstation/FFFFFF', console: true },
 ];
 
 const CINEMA = {
@@ -381,11 +381,15 @@ function renderAudio() {
 function renderApps() {
     const g = document.getElementById('appsGrid'); if (!g) return;
     const cur = getShieldApp();
-    g.innerHTML = APPS.map((a, i) =>
-        `<button class="app-tile ${!a.console && cur === a.pkg ? 'active' : ''}" data-idx="${i}">
-            <span class="app-e">${a.icon}</span><span class="app-n">${a.name}</span>
-        </button>`
-    ).join('');
+    g.innerHTML = APPS.map((a, i) => {
+        const isActive = !a.console && cur === a.pkg;
+        const logoHtml = a.logo
+            ? `<img class="app-logo" src="${a.logo}" alt="${a.name}">`
+            : `<span class="app-text-logo" style="color:${a.color || '#fff'}">📺</span>`;
+        return `<button class="app-tile ${isActive ? 'active' : ''}" data-idx="${i}">
+            ${logoHtml}<span class="app-n">${a.name}</span>
+        </button>`;
+    }).join('');
     g.querySelectorAll('.app-tile').forEach(t => {
         t.addEventListener('click', () => {
             const a = APPS[parseInt(t.dataset.idx)];
@@ -562,7 +566,7 @@ function initEvents() {
     }
 
     document.getElementById('btnRefresh')?.addEventListener('click', () => { fetchStates(); toast('🔄 מרענן...', 'info'); });
-    document.getElementById('btnOpenFreeTV')?.addEventListener('click', () => openFreeTV());
+
 
     document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => {
         b.style.transform = 'scale(0.85)';
