@@ -332,6 +332,11 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
     background: rgba(0,212,255,0.12) !important;
     box-shadow: 0 0 12px rgba(0,212,255,0.15);
 }
+.src-off {
+    border-color: rgba(255,71,87,0.3) !important;
+    background: rgba(255,71,87,0.1) !important;
+}
+.src-off:hover { background: rgba(255,71,87,0.25) !important; }
 
 .hero-power {
     position: relative; width: 100%; max-width: 220px; padding: 14px; border-radius: 28px;

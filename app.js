@@ -403,10 +403,14 @@ function renderCurtain() {
 function renderSources() {
     const g = document.getElementById('sourcesGrid'); if (!g) return;
     const activity = getCurrentActivity();
+    const isActive = !!activity && activity !== 'PowerOff';
+
     g.innerHTML = CINEMA.sources.map(s =>
         `<div class="src ${activity === s.activity ? 'active' : ''}" data-act="${s.activity}" data-name="${s.name}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`
-    ).join('');
-    g.querySelectorAll('.src').forEach(t => t.addEventListener('click', () => smartSource(t.dataset.act, t.dataset.name)));
+    ).join('') + (isActive ? `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>` : '');
+
+    g.querySelectorAll('.src:not(.src-off)').forEach(t => t.addEventListener('click', () => smartSource(t.dataset.act, t.dataset.name)));
+    document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
 }
 
 function renderAudio() {
