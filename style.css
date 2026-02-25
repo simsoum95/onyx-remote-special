@@ -389,9 +389,57 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .vol-range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; -webkit-appearance: none; direction: ltr; z-index: 2; }
 
 /* ============================================================
+   APPS
+   ============================================================ */
+.apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+.app-tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 14px 8px; border-radius: var(--rs);
+    background: var(--glass); border: 1px solid var(--gb);
+    cursor: pointer; transition: var(--tr);
+}
+.app-tile:hover { background: rgba(0,212,255,0.12); border-color: var(--neon); }
+.app-tile:active { transform: scale(0.92); }
+.app-e { font-size: 1.4rem; margin-bottom: 4px; }
+.app-n { font-size: 0.62rem; font-weight: 600; color: var(--t2); }
+
+/* ============================================================
    DEVICES
    ============================================================ */
 .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 8px; }
+
+.dev-main {
+    grid-column: span 2;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-radius: var(--rs);
+    background: var(--glass); border: 1px solid var(--gb);
+    transition: var(--tr); gap: 10px;
+}
+.dev-main.on { border-color: rgba(0,230,118,0.25); background: linear-gradient(90deg, var(--grnd), var(--glass)); }
+.dev-main.off { opacity: 0.7; }
+.dev-info { display: flex; align-items: center; gap: 8px; }
+.dev-info .dev-e { font-size: 1.3rem; }
+.dev-info .dev-n { font-size: 0.72rem; font-weight: 700; color: var(--t1); }
+.dev-status { font-size: 0.6rem; font-weight: 600; flex-shrink: 0; }
+.dev-main.on .dev-status { color: var(--green); }
+.dev-main.off .dev-status { color: var(--red); }
+.dev-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.dev-btn {
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 0.58rem; font-weight: 700; border: none; cursor: pointer;
+    transition: var(--tr); font-family: var(--heb);
+}
+.dev-btn.dev-on {
+    background: linear-gradient(135deg, rgba(0,230,118,0.2), rgba(0,230,118,0.08));
+    color: var(--green); border: 1px solid rgba(0,230,118,0.3);
+}
+.dev-btn.dev-on:hover { background: rgba(0,230,118,0.3); }
+.dev-btn.dev-off {
+    background: linear-gradient(135deg, rgba(255,71,87,0.2), rgba(255,71,87,0.08));
+    color: var(--red); border: 1px solid rgba(255,71,87,0.3);
+}
+.dev-btn.dev-off:hover { background: rgba(255,71,87,0.3); }
+
 .dev {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 14px 10px; border-radius: var(--rs); background: var(--glass); border: 1px solid var(--gb);
@@ -497,7 +545,9 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     .lt-n { font-size: 0.6rem; }
     .sources-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
     .src { padding: 14px 8px; }
-    .devices-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .devices-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .dev-main { grid-column: span 2; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 10px; }
+    .apps-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .cur-btns { width: 100%; }
     .cbtn { flex: 1; padding: 8px; min-width: 0; }
     .hero-chips { gap: 5px; }
@@ -509,4 +559,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @media (max-width: 360px) {
     .lights-grid { grid-template-columns: repeat(2, 1fr); }
     .devices-grid { grid-template-columns: repeat(2, 1fr); }
+    .dev-main { grid-column: span 2; }
+    .apps-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .app-tile { padding: 10px 6px; }
 }

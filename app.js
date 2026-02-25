@@ -26,6 +26,14 @@ const CINEMA = {
         { id: 'script.unknown_7', name: 'Paramount+', emoji: '⭐' },
         { id: 'script.unknown_6', name: 'PlayStation', emoji: '🎮' },
     ],
+    apps: [
+        { name: 'Free TV', pkg: 'com.freetv.player', emoji: '📡' },
+        { name: 'Netflix', pkg: 'com.netflix.ninja', emoji: '🎬' },
+        { name: 'YouTube', pkg: 'com.google.android.youtube.tv', emoji: '▶️' },
+        { name: 'Plex', pkg: 'com.plexapp.android', emoji: '🎞️' },
+        { name: 'Kodi', pkg: 'org.xbmc.kodi', emoji: '🏠' },
+        { name: 'Disney+', pkg: 'com.disney.disneyplus', emoji: '🏰' },
+    ],
 };
 
 const ALL_IDS = [
@@ -160,6 +168,18 @@ async function coverAction(a) {
     setTimeout(fetchStates, 2000);
 }
 
+async function devOn(id) {
+    await callSvc('media_player', 'turn_on', { entity_id: id });
+    toast('⚡ הופעל', 'success');
+    setTimeout(fetchStates, 3000);
+}
+
+async function devOff(id) {
+    await callSvc('media_player', 'turn_off', { entity_id: id });
+    toast('🔴 כובה', 'success');
+    setTimeout(fetchStates, 3000);
+}
+
 async function toggleDev(id) {
     const on = ['on','playing','idle','paused'].includes(S.entities[id]?.state);
     await callSvc('media_player', on ? 'turn_off' : 'turn_on', { entity_id: id });
@@ -170,6 +190,20 @@ async function fireSource(id) {
     await callSvc('script', 'turn_on', { entity_id: id });
     toast('🎯 מקור הופעל', 'success');
     setTimeout(fetchStates, 3000);
+}
+
+async function launchApp(pkg) {
+    const ok = await callSvc('remote', 'turn_on', {
+        entity_id: 'remote.shield',
+        activity: pkg,
+    });
+    if (!ok) {
+        await callSvc('androidtv', 'adb_command', {
+            entity_id: 'media_player.shield',
+            command: `am start -a android.intent.action.VIEW -n ${pkg}`,
+        });
+    }
+    toast('📱 אפליקציה נפתחת...', 'success');
 }
 
 async function volStep(dir) {
@@ -201,6 +235,7 @@ function renderAll() {
     renderLights();
     renderCurtain();
     renderSources();
+    renderApps();
     renderAudio();
     renderDevices();
     updateHero();
@@ -280,13 +315,46 @@ function renderAudio() {
 
 function renderDevices() {
     const g = document.getElementById('devicesGrid'); if (!g) return;
-    const devs = [{ ...CINEMA.projector, emoji:'📽️' }, { ...CINEMA.receiver, emoji:'🔊' }, ...CINEMA.players];
-    g.innerHTML = devs.map(d => {
+
+    const mainDevs = [
+        { ...CINEMA.projector, emoji: '📽️', label: 'מקרן' },
+        { ...CINEMA.receiver, emoji: '🔊', label: 'מגבר' },
+    ];
+    const otherDevs = CINEMA.players;
+
+    g.innerHTML = mainDevs.map(d => {
+        const st = S.entities[d.id]?.state || 'unavailable';
+        const on = ['on','playing','idle','paused'].includes(st);
+        return `<div class="dev-main ${on ? 'on' : 'off'}">
+            <div class="dev-info"><span class="dev-e">${d.emoji}</span><span class="dev-n">${d.label}</span></div>
+            <div class="dev-status">${on ? '🟢 דלוק' : '🔴 כבוי'}</div>
+            <div class="dev-btns">
+                <button class="dev-btn dev-on" data-id="${d.id}" data-act="on">הפעלה</button>
+                <button class="dev-btn dev-off" data-id="${d.id}" data-act="off">כיבוי</button>
+            </div>
+        </div>`;
+    }).join('') + otherDevs.map(d => {
         const st = S.entities[d.id]?.state || 'unavailable';
         const on = ['on','playing','idle','paused'].includes(st);
         return `<div class="dev ${on ? 'on' : 'off'}" data-id="${d.id}"><div class="dev-e">${d.emoji}</div><div class="dev-n">${d.name}</div><div class="dev-s">${on ? 'דלוק' : st === 'unavailable' ? '—' : 'כבוי'}</div></div>`;
     }).join('');
-    g.querySelectorAll('.dev').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
+
+    g.querySelectorAll('.dev-btn').forEach(b => {
+        b.addEventListener('click', e => {
+            e.stopPropagation();
+            const id = b.dataset.id;
+            b.dataset.act === 'on' ? devOn(id) : devOff(id);
+        });
+    });
+    g.querySelectorAll('.dev[data-id]').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
+}
+
+function renderApps() {
+    const g = document.getElementById('appsGrid'); if (!g) return;
+    g.innerHTML = CINEMA.apps.map(a =>
+        `<div class="app-tile" data-pkg="${a.pkg}"><div class="app-e">${a.emoji}</div><div class="app-n">${a.name}</div></div>`
+    ).join('');
+    g.querySelectorAll('.app-tile').forEach(t => t.addEventListener('click', () => launchApp(t.dataset.pkg)));
 }
 
 function updateHero() {
