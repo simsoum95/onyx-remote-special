@@ -13,8 +13,8 @@ const SHIELD_MP = 'media_player.shield_2';
 const SHIELD_CAST = 'media_player.shield';
 
 const RECEIVER_INPUTS = {
-    shield: 'GAME',
-    bluray: 'BD/DVD',
+    shield: 'BD/DVD',
+    ps5: 'GAME',
     cblsat: 'CBL/SAT',
     aux: 'AUX',
     net: 'NET',
@@ -23,12 +23,12 @@ const RECEIVER_INPUTS = {
 };
 
 const APPS = [
-    { name: 'Free TV', pkg: 'tv.freetv.androidtv', emoji: '📡', input: 'GAME' },
-    { name: 'Netflix', pkg: 'com.netflix.ninja', emoji: '🎬', input: 'GAME' },
-    { name: 'Plex', pkg: 'com.plexapp.android', emoji: '🎞️', input: 'GAME' },
-    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', emoji: '📺', input: 'GAME' },
-    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', emoji: '▶️', input: 'GAME' },
-    { name: 'Disney+', pkg: 'com.disney.disneyplus', emoji: '🏰', input: 'GAME' },
+    { name: 'Free TV', pkg: 'tv.freetv.androidtv', emoji: '📡', input: 'BD/DVD' },
+    { name: 'Netflix', pkg: 'com.netflix.ninja', emoji: '🎬', input: 'BD/DVD' },
+    { name: 'Plex', pkg: 'com.plexapp.android', emoji: '🎞️', input: 'BD/DVD' },
+    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', emoji: '📺', input: 'BD/DVD' },
+    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', emoji: '▶️', input: 'BD/DVD' },
+    { name: 'Disney+', pkg: 'com.disney.disneyplus', emoji: '🏰', input: 'BD/DVD' },
 ];
 
 const TV_CHANNELS = [
@@ -189,6 +189,7 @@ async function smartSource(app) {
 
         await Promise.all([
             app.input ? receiverSetInput(app.input) : Promise.resolve(),
+            callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
             launchApp(app.pkg),
         ]);
 
@@ -236,7 +237,10 @@ async function runScene(name) {
                 callSvc('media_player', 'turn_on', { entity_id: RECEIVER }),
             ]);
             await sleep(4000);
-            await receiverSetInput('GAME');
+            await Promise.all([
+                receiverSetInput('BD/DVD'),
+                callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
+            ]);
             await fetchStates();
             toast('✅ קולנוע מוכן!', 'success');
         } else if (name === 'cinema_off') {
