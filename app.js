@@ -371,22 +371,34 @@ async function toggleMute() {
 }
 
 async function sendRemoteCmd(cmd) {
-    await callSvc('remote', 'send_command', {
-        entity_id: 'remote.shield',
-        command: cmd,
-    });
+    try {
+        await callSvc('remote', 'send_command', {
+            entity_id: 'remote.shield',
+            command: cmd,
+        });
+    } catch {
+        toast('⚠️ שגיאה בשליחה', 'error');
+    }
 }
 
 async function sendText(text) {
     if (!text) return;
-    for (const ch of text) {
-        await callSvc('remote', 'send_command', {
-            entity_id: 'remote.shield',
-            command: ch,
+    try {
+        await callSvc('androidtv', 'adb_command', {
+            entity_id: 'media_player.shield_2',
+            command: `input text "${text}"`,
         });
-        await sleep(100);
+        toast(`⌨️ "${text}" נשלח`, 'success');
+    } catch {
+        for (const ch of text) {
+            await callSvc('remote', 'send_command', {
+                entity_id: 'remote.shield',
+                command: ch,
+            });
+            await sleep(150);
+        }
+        toast(`⌨️ "${text}" נשלח`, 'success');
     }
-    toast(`⌨️ "${text}" נשלח`, 'success');
 }
 
 async function allLights(svc) {
@@ -646,7 +658,12 @@ function initEvents() {
 
     document.getElementById('btnRefresh')?.addEventListener('click', () => { fetchStates(); toast('🔄 מרענן...', 'info'); });
 
-    document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => sendRemoteCmd(b.dataset.cmd)));
+    document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => {
+        b.style.transform = 'scale(0.85)';
+        b.style.boxShadow = '0 0 20px rgba(0,255,200,0.6)';
+        setTimeout(() => { b.style.transform = ''; b.style.boxShadow = ''; }, 200);
+        sendRemoteCmd(b.dataset.cmd);
+    }));
     document.getElementById('kbToggle')?.addEventListener('click', () => document.getElementById('kbPanel')?.classList.toggle('hidden'));
     document.getElementById('kbSend')?.addEventListener('click', () => {
         const inp = document.getElementById('kbInput');
