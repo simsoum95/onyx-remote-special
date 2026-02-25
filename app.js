@@ -453,9 +453,7 @@ async function launchApp() {
    INIT
    ============================================================ */
 async function init() {
-    initSetup();
     loadConfig();
-
     showView('loader');
     saveConfig(S.haUrl, S.haToken);
     await launchApp();
