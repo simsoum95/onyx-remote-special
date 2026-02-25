@@ -132,7 +132,87 @@ async function callWithRetry(domain, service, entityId, data, expectedStates) {
 }
 
 /* ============================================================
-   CINEMA ON — Séquence orchestrée avec vérification triple
+   ALLUMAGE PROJECTEUR — IR via Harmony Hub si réseau échoue
+   ============================================================ */
+async function powerOnProjector() {
+    toast('📽️ מדליק מקרן...', 'info');
+
+    // Tentative 1 : media_player.turn_on (marche si en veille réseau)
+    await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
+    await sleep(3000);
+    await fetchStates();
+    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
+
+    // Tentative 2 : IR via Harmony Hub — PowerOn
+    toast('📽️ שולח פקודת IR למקרן...', 'info');
+    await callSvc('remote', 'send_command', {
+        entity_id: 'remote.daskal',
+        device: 'Epson',
+        command: 'PowerOn',
+    });
+    await sleep(4000);
+    await fetchStates();
+    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
+
+    // Tentative 3 : IR PowerToggle
+    toast('📽️ ניסיון נוסף...', 'info');
+    await callSvc('remote', 'send_command', {
+        entity_id: 'remote.daskal',
+        device: 'Epson',
+        command: 'PowerToggle',
+    });
+    await sleep(4000);
+    await fetchStates();
+    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
+
+    // Tentative 4 : Harmony activity
+    toast('📽️ ניסיון אחרון...', 'info');
+    await callSvc('remote', 'turn_on', {
+        entity_id: 'remote.daskal',
+        activity: 'Watch TV',
+    });
+    await sleep(5000);
+    await fetchStates();
+    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
+
+    toast('❌ המקרן לא הגיב — נסה ידנית', 'error');
+    return false;
+}
+
+async function powerOnReceiver() {
+    toast('🔊 מדליק מגבר...', 'info');
+
+    await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
+    await sleep(3000);
+    await fetchStates();
+    if (isOn(CINEMA.receiver.id)) { toast('✅ מגבר דלוק!', 'success'); return true; }
+
+    // IR via Harmony
+    toast('🔊 שולח פקודת IR למגבר...', 'info');
+    await callSvc('remote', 'send_command', {
+        entity_id: 'remote.daskal',
+        device: 'Pioneer',
+        command: 'PowerOn',
+    });
+    await sleep(3000);
+    await fetchStates();
+    if (isOn(CINEMA.receiver.id)) { toast('✅ מגבר דלוק!', 'success'); return true; }
+
+    await callSvc('remote', 'send_command', {
+        entity_id: 'remote.daskal',
+        device: 'Pioneer',
+        command: 'PowerToggle',
+    });
+    await sleep(3000);
+    await fetchStates();
+    if (isOn(CINEMA.receiver.id)) { toast('✅ מגבר דלוק!', 'success'); return true; }
+
+    toast('❌ המגבר לא הגיב', 'error');
+    return false;
+}
+
+/* ============================================================
+   CINEMA ON — Séquence orchestrée complète
    ============================================================ */
 async function ensureCinemaOn() {
     const pOn = isOn(CINEMA.projector.id);
@@ -144,12 +224,8 @@ async function ensureCinemaOn() {
     await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
     await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
 
-    if (!pOn) {
-        await callWithRetry('media_player', 'turn_on', CINEMA.projector.id, {}, ['on','idle','playing']);
-    }
-    if (!rOn) {
-        await callWithRetry('media_player', 'turn_on', CINEMA.receiver.id, {}, ['on','idle','playing']);
-    }
+    if (!pOn) await powerOnProjector();
+    if (!rOn) await powerOnReceiver();
 
     await fetchStates();
     toast('🎬 קולנוע פעיל!', 'success');
@@ -169,8 +245,17 @@ async function runScene(name) {
             await ensureCinemaOn();
         } else if (name === 'cinema_off') {
             toast('🔴 מכבה...', 'info');
-            await callWithRetry('media_player', 'turn_off', CINEMA.projector.id, {}, ['off','standby','unavailable']);
-            await callWithRetry('media_player', 'turn_off', CINEMA.receiver.id, {}, ['off','standby','unavailable']);
+            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.projector.id });
+            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.receiver.id });
+            await sleep(2000);
+            await fetchStates();
+            if (isOn(CINEMA.projector.id)) {
+                await callSvc('remote', 'send_command', { entity_id: 'remote.daskal', device: 'Epson', command: 'PowerOff' });
+            }
+            if (isOn(CINEMA.receiver.id)) {
+                await callSvc('remote', 'send_command', { entity_id: 'remote.daskal', device: 'Pioneer', command: 'PowerOff' });
+            }
+            await sleep(2000);
             await callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
             await fetchStates();
             toast('🔴 הקולנוע כבוי', 'success');
@@ -265,11 +350,26 @@ async function coverAction(a) {
 }
 
 async function devOn(id) {
-    await callWithRetry('media_player', 'turn_on', id, {}, ['on','idle','playing']);
+    if (id === CINEMA.projector.id) return powerOnProjector();
+    if (id === CINEMA.receiver.id) return powerOnReceiver();
+    await callSvc('media_player', 'turn_on', { entity_id: id });
+    toast('⚡ הופעל', 'success');
+    setTimeout(fetchStates, 3000);
 }
 
 async function devOff(id) {
-    await callWithRetry('media_player', 'turn_off', id, {}, ['off','standby','unavailable']);
+    await callSvc('media_player', 'turn_off', { entity_id: id });
+    if (id === CINEMA.projector.id || id === CINEMA.receiver.id) {
+        await sleep(2000);
+        await fetchStates();
+        if (!isOn(id)) { toast('🔴 כובה', 'success'); return; }
+        const dev = id === CINEMA.projector.id ? 'Epson' : 'Pioneer';
+        await callSvc('remote', 'send_command', { entity_id: 'remote.daskal', device: dev, command: 'PowerOff' });
+        await sleep(3000);
+        await fetchStates();
+    }
+    toast('🔴 כובה', 'success');
+    setTimeout(fetchStates, 2000);
 }
 
 async function toggleDev(id) {
