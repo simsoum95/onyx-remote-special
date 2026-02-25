@@ -1,8 +1,25 @@
 /**
  * ONYX REMOTE SPECIAL — PWA Standalone
- * Toutes les requêtes passent par /api/ha (proxy Vercel) — zéro CORS.
+ * Proxy Vercel + IR Harmony Hub pour contrôle fiable.
  * Clic source/app = allumage auto complet + lancement.
  */
+
+const HARMONY = 'remote.daskal';
+const HARMONY_DEVICES = {
+    projector: 'Epson Projector',
+    receiver: 'Pioneer AV Receiver',
+    ps5: 'Sony Game Console',
+    appletv: 'Apple TV',
+    shield: 'SHIELD',
+};
+const HARMONY_ACTIVITIES = {
+    netflix: 'Netflix',
+    freetv: 'FreeTV',
+    appletv: 'Watch Apple TV',
+    ps5: 'PS5',
+    plex: 'Plex',
+    startup: 'Startup Show',
+};
 
 const CINEMA = {
     lights: [
@@ -13,27 +30,19 @@ const CINEMA = {
         { id: 'light.8a_cinema_basement_wall_switch', name: 'קיר', emoji: '🏮' },
     ],
     cover: { id: 'cover.cinema_curtains' },
-    receiver: { id: 'media_player.pioneer_vsx_lx303_ed2279', name: 'מגבר Pioneer' },
-    projector: { id: 'media_player.epson', name: 'מקרן Epson' },
+    receiver: { id: 'media_player.pioneer_vsx_lx303_ed2279' },
+    projector: { id: 'media_player.epson' },
     players: [
         { id: 'media_player.shield', name: 'Shield', emoji: '🛡️' },
         { id: 'media_player.shield_2', name: 'Shield 2', emoji: '🛡️' },
         { id: 'media_player.qvlnv_byty', name: 'Apple TV', emoji: '🍎' },
     ],
     sources: [
-        { id: 'script.unknown_4', name: 'Netflix', emoji: '🎬' },
-        { id: 'script.unknown_8', name: 'Apple TV', emoji: '📺' },
-        { id: 'script.unknown_5', name: 'Fox', emoji: '🦊' },
-        { id: 'script.unknown_7', name: 'Paramount+', emoji: '⭐' },
-        { id: 'script.unknown_6', name: 'PlayStation', emoji: '🎮' },
-    ],
-    apps: [
-        { name: 'Free TV', pkg: 'com.freetv.player', emoji: '📡' },
-        { name: 'Netflix', pkg: 'com.netflix.ninja', emoji: '🎬' },
-        { name: 'YouTube', pkg: 'com.google.android.youtube.tv', emoji: '▶️' },
-        { name: 'Plex', pkg: 'com.plexapp.android', emoji: '🎞️' },
-        { name: 'Kodi', pkg: 'org.xbmc.kodi', emoji: '🏠' },
-        { name: 'Disney+', pkg: 'com.disney.disneyplus', emoji: '🏰' },
+        { name: 'Netflix', activity: 'Netflix', emoji: '🎬' },
+        { name: 'Free TV', activity: 'FreeTV', emoji: '📡' },
+        { name: 'Apple TV', activity: 'Watch Apple TV', emoji: '📺' },
+        { name: 'PS5', activity: 'PS5', emoji: '🎮' },
+        { name: 'Plex', activity: 'Plex', emoji: '🎞️' },
     ],
 };
 
@@ -43,6 +52,7 @@ const ALL_IDS = [
     CINEMA.receiver.id,
     CINEMA.projector.id,
     ...CINEMA.players.map(p => p.id),
+    HARMONY,
 ];
 
 const S = { entities: {}, cinemaOn: false, busy: false, poll: null };
@@ -97,139 +107,53 @@ async function callSvc(domain, service, data) {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function isOn(id) { return ['on','playing','idle','paused'].includes(S.entities[id]?.state); }
 
-const MAX_RETRIES = 3;
-const VERIFY_DELAY = 2000;
-const RETRY_DELAY = 2500;
+function getCurrentActivity() {
+    return S.entities[HARMONY]?.attr?.current_activity || null;
+}
 
 /* ============================================================
-   APPEL AVEC RETRY TRIPLE — même logique que Onyx Home
+   HARMONY — Lancer une activité (allume TOUT automatiquement)
+   Le Harmony Hub allume le projecteur + receiver + source en un seul appel
    ============================================================ */
-async function callWithRetry(domain, service, entityId, data, expectedStates) {
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        toast(`⚡ ${entityId.split('.')[1]} — ניסיון ${attempt}/${MAX_RETRIES}...`, 'info');
+async function startHarmonyActivity(activityName) {
+    toast(`🎬 מפעיל ${activityName}...`, 'info');
 
-        await callSvc(domain, service, { entity_id: entityId, ...data });
-        await sleep(VERIFY_DELAY);
+    await callSvc('remote', 'turn_on', {
+        entity_id: HARMONY,
+        activity: activityName,
+    });
 
+    for (let i = 1; i <= 6; i++) {
+        await sleep(3000);
         await fetchStates();
-        const state = S.entities[entityId]?.state;
-
-        if (expectedStates.includes(state)) {
-            toast(`✅ ${entityId.split('.')[1]} → ${state}`, 'success');
+        const current = getCurrentActivity();
+        if (current === activityName) {
+            toast(`✅ ${activityName} פעיל!`, 'success');
             return true;
         }
+        if (i < 6) toast(`⏳ ממתין... (${i}/6)`, 'info');
+    }
 
-        console.warn(`[Onyx] ${entityId}: ${state} ≠ ${expectedStates} (attempt ${attempt}/${MAX_RETRIES})`);
+    toast(`⚠️ ${activityName} — בודק...`, 'error');
+    return false;
+}
 
-        if (attempt < MAX_RETRIES) {
-            toast(`⚠️ לא הצליח, מנסה שוב...`, 'error');
-            await sleep(RETRY_DELAY);
+async function stopHarmony() {
+    toast('🔴 מכבה הכל...', 'info');
+    await callSvc('remote', 'turn_off', { entity_id: HARMONY });
+
+    for (let i = 1; i <= 4; i++) {
+        await sleep(3000);
+        await fetchStates();
+        const current = getCurrentActivity();
+        if (!current || current === 'PowerOff') {
+            toast('🔴 הקולנוע כבוי', 'success');
+            return true;
         }
     }
 
-    toast(`❌ ${entityId.split('.')[1]} לא הגיב`, 'error');
+    toast('⚠️ בדוק אם הכל כבוי', 'error');
     return false;
-}
-
-/* ============================================================
-   ALLUMAGE PROJECTEUR — IR via Harmony Hub si réseau échoue
-   ============================================================ */
-async function powerOnProjector() {
-    toast('📽️ מדליק מקרן...', 'info');
-
-    // Tentative 1 : media_player.turn_on (marche si en veille réseau)
-    await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
-    await sleep(3000);
-    await fetchStates();
-    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
-
-    // Tentative 2 : IR via Harmony Hub — PowerOn
-    toast('📽️ שולח פקודת IR למקרן...', 'info');
-    await callSvc('remote', 'send_command', {
-        entity_id: 'remote.daskal',
-        device: 'Epson',
-        command: 'PowerOn',
-    });
-    await sleep(4000);
-    await fetchStates();
-    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
-
-    // Tentative 3 : IR PowerToggle
-    toast('📽️ ניסיון נוסף...', 'info');
-    await callSvc('remote', 'send_command', {
-        entity_id: 'remote.daskal',
-        device: 'Epson',
-        command: 'PowerToggle',
-    });
-    await sleep(4000);
-    await fetchStates();
-    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
-
-    // Tentative 4 : Harmony activity
-    toast('📽️ ניסיון אחרון...', 'info');
-    await callSvc('remote', 'turn_on', {
-        entity_id: 'remote.daskal',
-        activity: 'Watch TV',
-    });
-    await sleep(5000);
-    await fetchStates();
-    if (isOn(CINEMA.projector.id)) { toast('✅ מקרן דלוק!', 'success'); return true; }
-
-    toast('❌ המקרן לא הגיב — נסה ידנית', 'error');
-    return false;
-}
-
-async function powerOnReceiver() {
-    toast('🔊 מדליק מגבר...', 'info');
-
-    await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
-    await sleep(3000);
-    await fetchStates();
-    if (isOn(CINEMA.receiver.id)) { toast('✅ מגבר דלוק!', 'success'); return true; }
-
-    // IR via Harmony
-    toast('🔊 שולח פקודת IR למגבר...', 'info');
-    await callSvc('remote', 'send_command', {
-        entity_id: 'remote.daskal',
-        device: 'Pioneer',
-        command: 'PowerOn',
-    });
-    await sleep(3000);
-    await fetchStates();
-    if (isOn(CINEMA.receiver.id)) { toast('✅ מגבר דלוק!', 'success'); return true; }
-
-    await callSvc('remote', 'send_command', {
-        entity_id: 'remote.daskal',
-        device: 'Pioneer',
-        command: 'PowerToggle',
-    });
-    await sleep(3000);
-    await fetchStates();
-    if (isOn(CINEMA.receiver.id)) { toast('✅ מגבר דלוק!', 'success'); return true; }
-
-    toast('❌ המגבר לא הגיב', 'error');
-    return false;
-}
-
-/* ============================================================
-   CINEMA ON — Séquence orchestrée complète
-   ============================================================ */
-async function ensureCinemaOn() {
-    const pOn = isOn(CINEMA.projector.id);
-    const rOn = isOn(CINEMA.receiver.id);
-    if (pOn && rOn) return true;
-
-    toast('🎬 מפעיל קולנוע...', 'info');
-
-    await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
-    await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
-
-    if (!pOn) await powerOnProjector();
-    if (!rOn) await powerOnReceiver();
-
-    await fetchStates();
-    toast('🎬 קולנוע פעיל!', 'success');
-    return true;
 }
 
 /* ============================================================
@@ -242,23 +166,13 @@ async function runScene(name) {
 
     try {
         if (name === 'cinema_on') {
-            await ensureCinemaOn();
+            await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
+            await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
+            await startHarmonyActivity('Startup Show');
         } else if (name === 'cinema_off') {
-            toast('🔴 מכבה...', 'info');
-            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.projector.id });
-            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.receiver.id });
-            await sleep(2000);
-            await fetchStates();
-            if (isOn(CINEMA.projector.id)) {
-                await callSvc('remote', 'send_command', { entity_id: 'remote.daskal', device: 'Epson', command: 'PowerOff' });
-            }
-            if (isOn(CINEMA.receiver.id)) {
-                await callSvc('remote', 'send_command', { entity_id: 'remote.daskal', device: 'Pioneer', command: 'PowerOff' });
-            }
-            await sleep(2000);
+            await stopHarmony();
             await callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
             await fetchStates();
-            toast('🔴 הקולנוע כבוי', 'success');
         } else if (name === 'ambient') {
             toast('✨ מצב אווירה...', 'info');
             await Promise.all([
@@ -283,51 +197,17 @@ async function runScene(name) {
 }
 
 /* ============================================================
-   SOURCE = allume tout + change source
+   SOURCE = Harmony Activity (allume TOUT + bascule la source)
    ============================================================ */
-async function smartSource(scriptId, name) {
+async function smartSource(activityName, label) {
     if (S.busy) return;
     S.busy = true;
     setBusy(true);
-    toast(`🎯 ${name}...`, 'info');
 
     try {
-        await ensureCinemaOn();
-        await callSvc('script', 'turn_on', { entity_id: scriptId });
-        await sleep(2000);
-        await fetchStates();
-        toast(`✅ ${name} פעיל!`, 'success');
-    } catch { toast('שגיאה', 'error'); }
-
-    S.busy = false;
-    setBusy(false);
-}
-
-/* ============================================================
-   APP = allume tout + lance l'app sur le Shield
-   ============================================================ */
-async function smartApp(pkg, name) {
-    if (S.busy) return;
-    S.busy = true;
-    setBusy(true);
-    toast(`📱 ${name}...`, 'info');
-
-    try {
-        await ensureCinemaOn();
-
-        const ok = await callSvc('remote', 'turn_on', {
-            entity_id: 'remote.shield',
-            activity: pkg,
-        });
-        if (!ok) {
-            await callSvc('androidtv', 'adb_command', {
-                entity_id: 'media_player.shield',
-                command: `am start -a android.intent.action.VIEW -n ${pkg}`,
-            });
-        }
-        await sleep(2000);
-        await fetchStates();
-        toast(`✅ ${name} פעיל!`, 'success');
+        await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
+        await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
+        await startHarmonyActivity(activityName);
     } catch { toast('שגיאה', 'error'); }
 
     S.busy = false;
@@ -350,32 +230,49 @@ async function coverAction(a) {
 }
 
 async function devOn(id) {
-    if (id === CINEMA.projector.id) return powerOnProjector();
-    if (id === CINEMA.receiver.id) return powerOnReceiver();
+    if (id === CINEMA.projector.id) {
+        toast('📽️ מדליק מקרן...', 'info');
+        await callSvc('remote', 'send_command', {
+            entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
+        });
+        await sleep(5000);
+        await fetchStates();
+        toast(isOn(id) ? '✅ מקרן דלוק!' : '⚠️ בדוק מקרן', isOn(id) ? 'success' : 'error');
+        return;
+    }
+    if (id === CINEMA.receiver.id) {
+        toast('🔊 מדליק מגבר...', 'info');
+        await callSvc('remote', 'send_command', {
+            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'PowerOn',
+        });
+        await sleep(4000);
+        await fetchStates();
+        toast(isOn(id) ? '✅ מגבר דלוק!' : '⚠️ בדוק מגבר', isOn(id) ? 'success' : 'error');
+        return;
+    }
     await callSvc('media_player', 'turn_on', { entity_id: id });
     toast('⚡ הופעל', 'success');
     setTimeout(fetchStates, 3000);
 }
 
 async function devOff(id) {
-    await callSvc('media_player', 'turn_off', { entity_id: id });
-    if (id === CINEMA.projector.id || id === CINEMA.receiver.id) {
-        await sleep(2000);
-        await fetchStates();
-        if (!isOn(id)) { toast('🔴 כובה', 'success'); return; }
-        const dev = id === CINEMA.projector.id ? 'Epson' : 'Pioneer';
-        await callSvc('remote', 'send_command', { entity_id: 'remote.daskal', device: dev, command: 'PowerOff' });
-        await sleep(3000);
-        await fetchStates();
+    if (id === CINEMA.projector.id) {
+        await callSvc('remote', 'send_command', {
+            entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOff',
+        });
+    } else if (id === CINEMA.receiver.id) {
+        await callSvc('remote', 'send_command', {
+            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'PowerOff',
+        });
+    } else {
+        await callSvc('media_player', 'turn_off', { entity_id: id });
     }
     toast('🔴 כובה', 'success');
-    setTimeout(fetchStates, 2000);
+    setTimeout(fetchStates, 4000);
 }
 
 async function toggleDev(id) {
-    const on = isOn(id);
-    await callSvc('media_player', on ? 'turn_off' : 'turn_on', { entity_id: id });
-    setTimeout(fetchStates, 3000);
+    isOn(id) ? devOff(id) : devOn(id);
 }
 
 async function volStep(dir) {
@@ -408,7 +305,6 @@ function renderAll() {
     renderLights();
     renderCurtain();
     renderSources();
-    renderApps();
     renderAudio();
     renderDevices();
     updateHero();
@@ -420,12 +316,16 @@ function renderStatusBar() {
     const cState = S.entities[CINEMA.cover.id]?.state || 'unknown';
     const lightsOn = CINEMA.lights.filter(l => S.entities[l.id]?.state === 'on').length;
     const lightsTotal = CINEMA.lights.length;
+    const activity = getCurrentActivity();
 
     setStatItem('statProjector', pOn, pOn ? 'דלוק' : 'כבוי');
     setStatItem('statReceiver', rOn, rOn ? 'דלוק' : 'כבוי');
     const cLabels = { open:'פתוח', closed:'סגור', opening:'נפתח', closing:'נסגר' };
     setStatItem('statCurtain', cState === 'open', cLabels[cState] || cState);
     setStatItem('statLights', lightsOn > 0, `${lightsOn}/${lightsTotal}`);
+
+    const actEl = document.getElementById('currentActivity');
+    if (actEl) actEl.textContent = activity && activity !== 'PowerOff' ? activity : '—';
 
     const countEl = document.getElementById('lightsCount');
     if (countEl) countEl.textContent = lightsOn > 0 ? `(${lightsOn} דלוקות)` : '';
@@ -443,6 +343,7 @@ function setStatItem(elId, on, text) {
 function renderProjectorStatus() {
     const pOn = isOn(CINEMA.projector.id);
     const rOn = isOn(CINEMA.receiver.id);
+    const activity = getCurrentActivity();
     const el = document.getElementById('projectorPanel');
     if (!el) return;
 
@@ -470,7 +371,8 @@ function renderProjectorStatus() {
                 <button class="pbtn pbtn-on" data-id="${CINEMA.receiver.id}" data-act="on">הפעלה</button>
                 <button class="pbtn pbtn-off" data-id="${CINEMA.receiver.id}" data-act="off">כיבוי</button>
             </div>
-        </div>`;
+        </div>
+        ${activity && activity !== 'PowerOff' ? `<div class="proj-activity">🎯 פעילות: <strong>${activity}</strong></div>` : ''}`;
 
     el.querySelectorAll('.pbtn').forEach(b => {
         b.addEventListener('click', e => {
@@ -500,22 +402,11 @@ function renderCurtain() {
 
 function renderSources() {
     const g = document.getElementById('sourcesGrid'); if (!g) return;
+    const activity = getCurrentActivity();
     g.innerHTML = CINEMA.sources.map(s =>
-        `<div class="src" data-id="${s.id}" data-name="${s.name}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`
+        `<div class="src ${activity === s.activity ? 'active' : ''}" data-act="${s.activity}" data-name="${s.name}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`
     ).join('');
-    g.querySelectorAll('.src').forEach(t => t.addEventListener('click', () => {
-        g.querySelectorAll('.src').forEach(x => x.classList.remove('active'));
-        t.classList.add('active');
-        smartSource(t.dataset.id, t.dataset.name);
-    }));
-}
-
-function renderApps() {
-    const g = document.getElementById('appsGrid'); if (!g) return;
-    g.innerHTML = CINEMA.apps.map(a =>
-        `<div class="app-tile" data-pkg="${a.pkg}" data-name="${a.name}"><div class="app-e">${a.emoji}</div><div class="app-n">${a.name}</div></div>`
-    ).join('');
-    g.querySelectorAll('.app-tile').forEach(t => t.addEventListener('click', () => smartApp(t.dataset.pkg, t.dataset.name)));
+    g.querySelectorAll('.src').forEach(t => t.addEventListener('click', () => smartSource(t.dataset.act, t.dataset.name)));
 }
 
 function renderAudio() {
@@ -545,16 +436,18 @@ function renderDevices() {
 }
 
 function updateHero() {
-    const pOn = isOn(CINEMA.projector.id);
-    const rOn = isOn(CINEMA.receiver.id);
-    S.cinemaOn = pOn && rOn;
+    const activity = getCurrentActivity();
+    S.cinemaOn = !!activity && activity !== 'PowerOff';
 
     const orb = document.getElementById('heroOrbit');
     const sub = document.getElementById('heroSub');
     const btn = document.getElementById('btnPower');
     const lab = document.getElementById('powerLabel');
     if (orb) orb.classList.toggle('on', S.cinemaOn);
-    if (sub) { sub.textContent = S.cinemaOn ? '🟢 קולנוע פעיל' : '⚫ קולנוע כבוי'; sub.classList.toggle('on', S.cinemaOn); }
+    if (sub) {
+        sub.textContent = S.cinemaOn ? `🟢 ${activity}` : '⚫ קולנוע כבוי';
+        sub.classList.toggle('on', S.cinemaOn);
+    }
     if (btn) btn.classList.toggle('on', S.cinemaOn);
     if (lab) lab.textContent = S.cinemaOn ? 'כיבוי' : 'הפעלה';
 }

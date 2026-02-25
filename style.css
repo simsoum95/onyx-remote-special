@@ -315,6 +315,23 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
     pointer-events: none; opacity: 0.5;
 }
+.proj-activity {
+    text-align: center; padding: 6px 10px;
+    font-size: 0.62rem; color: var(--neon);
+    border-radius: 8px; background: rgba(0,212,255,0.06);
+    border: 1px solid rgba(0,212,255,0.12);
+}
+.activity-badge {
+    font-size: 0.55rem; font-weight: 700; color: var(--neon);
+    background: rgba(0,212,255,0.1); padding: 2px 8px;
+    border-radius: 10px; border: 1px solid rgba(0,212,255,0.2);
+    margin-right: auto;
+}
+.src.active {
+    border-color: var(--neon) !important;
+    background: rgba(0,212,255,0.12) !important;
+    box-shadow: 0 0 12px rgba(0,212,255,0.15);
+}
 
 .hero-power {
     position: relative; width: 100%; max-width: 220px; padding: 14px; border-radius: 28px;
