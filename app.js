@@ -208,6 +208,24 @@ async function smartSource(activityName, label) {
         await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
         await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
         await startHarmonyActivity(activityName);
+
+        await fetchStates();
+        if (!isOn(CINEMA.projector.id)) {
+            toast('📽️ מדליק מקרן בנפרד...', 'info');
+            await callSvc('remote', 'send_command', {
+                entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
+            });
+            await sleep(5000);
+            await fetchStates();
+        }
+        if (!isOn(CINEMA.receiver.id)) {
+            toast('🔊 מדליק מגבר בנפרד...', 'info');
+            await callSvc('remote', 'send_command', {
+                entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'PowerOn',
+            });
+            await sleep(4000);
+            await fetchStates();
+        }
     } catch { toast('שגיאה', 'error'); }
 
     S.busy = false;
