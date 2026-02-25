@@ -44,7 +44,7 @@
             </div>
         </header>
 
-        <!-- STATUS BAR — Vue rapide de tout le système -->
+        <!-- STATUS BAR -->
         <div class="status-bar" id="statusBar">
             <div class="stat-item" id="statProjector">
                 <span class="stat-dot"></span>
@@ -70,6 +70,12 @@
                 <span class="stat-label">תאורה</span>
                 <span class="stat-val">—</span>
             </div>
+            <div class="stat-item" id="statAdb">
+                <span class="stat-dot"></span>
+                <span class="stat-icon">🔌</span>
+                <span class="stat-label">ADB</span>
+                <span class="stat-val">—</span>
+            </div>
         </div>
 
         <!-- Main content -->
@@ -84,7 +90,6 @@
                         </div>
                         <div class="hero-title">מצב קולנוע</div>
                         <div class="hero-sub" id="heroSub">⚫ קולנוע כבוי</div>
-                        <!-- Panneau projecteur + receiver dédié -->
                         <div class="projector-panel" id="projectorPanel"></div>
                         <button class="hero-power" id="btnPower">
                             <span class="power-glow"></span>
@@ -113,6 +118,37 @@
                         </div>
                     </div>
                 </div>
+                <!-- REMOTE -->
+                <div class="glass-card" id="remoteCard">
+                    <div class="card-hdr"><span class="card-ico">🕹️</span><span>שלט רחוק</span></div>
+                    <div class="dpad">
+                        <button class="dp dp-up" data-cmd="DPAD_UP">▲</button>
+                        <button class="dp dp-left" data-cmd="DPAD_LEFT">◀</button>
+                        <button class="dp dp-ok" data-cmd="DPAD_CENTER">OK</button>
+                        <button class="dp dp-right" data-cmd="DPAD_RIGHT">▶</button>
+                        <button class="dp dp-down" data-cmd="DPAD_DOWN">▼</button>
+                    </div>
+                    <div class="rmt-nav">
+                        <button class="rmt-btn" data-cmd="BACK">↩ חזור</button>
+                        <button class="rmt-btn" data-cmd="HOME">🏠 בית</button>
+                        <button class="rmt-btn" data-cmd="MENU">☰ תפריט</button>
+                    </div>
+                    <div class="rmt-media">
+                        <button class="rmt-m" data-cmd="MEDIA_REWIND">⏪</button>
+                        <button class="rmt-m rmt-play" data-cmd="MEDIA_PLAY_PAUSE">⏯</button>
+                        <button class="rmt-m" data-cmd="MEDIA_FAST_FORWARD">⏩</button>
+                        <button class="rmt-m" data-cmd="MEDIA_PREVIOUS">⏮</button>
+                        <button class="rmt-m" data-cmd="MEDIA_STOP">⏹</button>
+                        <button class="rmt-m" data-cmd="MEDIA_NEXT">⏭</button>
+                    </div>
+                    <div class="rmt-kb-wrap">
+                        <button class="rmt-btn rmt-kb-toggle" id="kbToggle">⌨️ מקלדת ADB</button>
+                        <div class="rmt-kb hidden" id="kbPanel">
+                            <input type="text" class="rmt-input" id="kbInput" placeholder="הקלד טקסט לחיפוש..." dir="ltr">
+                            <button class="rmt-btn rmt-send" id="kbSend">שלח</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="pc-col pc-left">
                 <!-- Lights -->
@@ -126,16 +162,16 @@
                     </div>
                     <div class="lights-grid" id="lightsGrid"></div>
                 </div>
-                <!-- Sources — Toutes les apps + consoles -->
+                <!-- Sources — Apps -->
                 <div class="glass-card">
-                    <div class="card-hdr"><span class="card-ico">🎯</span><span>אפליקציות ומקורות</span><span class="activity-badge" id="currentActivity">—</span></div>
+                    <div class="card-hdr"><span class="card-ico">🎯</span><span>אפליקציות</span><span class="activity-badge" id="currentActivity">—</span></div>
                     <div class="sources-grid" id="sourcesGrid"></div>
                 </div>
-                <!-- Chaînes TV israeliennes -->
-                <div class="glass-card" id="channelsSection">
-                    <div class="card-hdr"><span class="card-ico">📺</span><span>ערוצים ישראליים</span></div>
-                    <p class="ch-desc">לחץ על ערוץ → FreeTV נפתח אוטומטי + הערוץ נבחר</p>
-                    <div class="channels-grid" id="channelsGrid"></div>
+                <!-- FreeTV — 65+ chaînes -->
+                <div class="glass-card" id="freetvSection">
+                    <div class="card-hdr"><span class="card-ico">📡</span><span>FreeTV — 65+ ערוצים</span></div>
+                    <p class="ch-desc">לחץ על ערוץ → הכל נדלק אוטומטי + FreeTV נפתח</p>
+                    <div class="freetv-grid" id="freetvGrid"></div>
                     <div class="card-hdr" style="margin-top:16px"><span class="card-ico">🔢</span><span>מספר ערוץ ידני</span></div>
                     <div class="numpad">
                         <button class="numpad-btn" data-digit="1">1</button>
@@ -165,50 +201,10 @@
                         <button class="vol-btn vol-mute" id="vMute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
                     </div>
                 </div>
-                <!-- REMOTE — Télécommande intelligente -->
-                <div class="glass-card" id="remoteCard">
-                    <div class="card-hdr"><span class="card-ico">🕹️</span><span>שלט רחוק</span></div>
-                    <!-- D-pad -->
-                    <div class="dpad">
-                        <button class="dp dp-up" data-cmd="DPAD_UP">▲</button>
-                        <button class="dp dp-left" data-cmd="DPAD_LEFT">◀</button>
-                        <button class="dp dp-ok" data-cmd="DPAD_CENTER">OK</button>
-                        <button class="dp dp-right" data-cmd="DPAD_RIGHT">▶</button>
-                        <button class="dp dp-down" data-cmd="DPAD_DOWN">▼</button>
-                    </div>
-                    <!-- Nav buttons -->
-                    <div class="rmt-nav">
-                        <button class="rmt-btn" data-cmd="BACK">↩ חזור</button>
-                        <button class="rmt-btn" data-cmd="HOME">🏠 בית</button>
-                        <button class="rmt-btn" data-cmd="MENU">☰ תפריט</button>
-                    </div>
-                    <!-- Media controls -->
-                    <div class="rmt-media">
-                        <button class="rmt-m" data-cmd="MEDIA_REWIND">⏪</button>
-                        <button class="rmt-m rmt-play" data-cmd="MEDIA_PLAY_PAUSE">⏯</button>
-                        <button class="rmt-m" data-cmd="MEDIA_FAST_FORWARD">⏩</button>
-                        <button class="rmt-m" data-cmd="MEDIA_PREVIOUS">⏮</button>
-                        <button class="rmt-m" data-cmd="MEDIA_STOP">⏹</button>
-                        <button class="rmt-m" data-cmd="MEDIA_NEXT">⏭</button>
-                    </div>
-                    <!-- Keyboard toggle -->
-                    <div class="rmt-kb-wrap">
-                        <button class="rmt-btn rmt-kb-toggle" id="kbToggle">⌨️ מקלדת</button>
-                        <div class="rmt-kb hidden" id="kbPanel">
-                            <input type="text" class="rmt-input" id="kbInput" placeholder="הקלד לחיפוש..." dir="ltr">
-                            <button class="rmt-btn rmt-send" id="kbSend">שלח</button>
-                        </div>
-                    </div>
-                </div>
                 <!-- Speakers -->
                 <div class="glass-card">
                     <div class="card-hdr"><span class="card-ico">🔈</span><span>רמקולים</span></div>
                     <div class="speakers-grid" id="speakersGrid"></div>
-                </div>
-                <!-- Devices -->
-                <div class="glass-card">
-                    <div class="card-hdr"><span class="card-ico">⚡</span><span>מכשירים</span></div>
-                    <div class="devices-grid" id="devicesGrid"></div>
                 </div>
             </div>
         </main>
@@ -216,8 +212,8 @@
         <!-- Mobile nav -->
         <nav id="mNav">
             <button class="mn active" data-go="hero"><span class="mn-i">🎬</span><span>קולנוע</span></button>
-            <button class="mn" data-go="sources"><span class="mn-i">📡</span><span>אפליקציות</span></button>
-            <button class="mn" data-go="channels"><span class="mn-i">📺</span><span>ערוצים</span></button>
+            <button class="mn" data-go="sources"><span class="mn-i">📱</span><span>אפליקציות</span></button>
+            <button class="mn" data-go="freetv"><span class="mn-i">📺</span><span>ערוצים</span></button>
             <button class="mn" data-go="remote"><span class="mn-i">🕹️</span><span>שלט</span></button>
             <button class="mn" data-go="audio"><span class="mn-i">🔊</span><span>שמע</span></button>
         </nav>

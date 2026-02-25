@@ -446,6 +446,35 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 }
 
 /* ============================================================
+   FREETV GRID — 65+ chaînes organisées par catégorie
+   ============================================================ */
+.freetv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+    gap: 6px;
+}
+.ftv-cat-title {
+    grid-column: 1 / -1;
+    font-size: 0.68rem; font-weight: 700; color: var(--neon);
+    letter-spacing: 1px; padding: 10px 0 4px;
+    border-top: 1px solid rgba(0,212,255,0.08);
+    margin-top: 4px;
+}
+.ftv-cat-title:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+.ftv-ch {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 8px; border-radius: 10px;
+    background: var(--glass); border: 1px solid var(--gb);
+    cursor: pointer; transition: var(--tr);
+    user-select: none; -webkit-user-select: none;
+}
+.ftv-ch:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
+.ftv-ch:active { transform: scale(0.93); }
+.ftv-icon { font-size: 1.1rem; flex-shrink: 0; }
+.ftv-name { font-size: 0.58rem; font-weight: 600; color: var(--t2); line-height: 1.2; }
+
+/* ============================================================
    AUDIO
    ============================================================ */
 .vol-num { font-family: var(--tech); font-size: 0.85rem; font-weight: 700; color: var(--neon); letter-spacing: 1px; margin-right: auto; text-shadow: 0 0 8px var(--ng); }

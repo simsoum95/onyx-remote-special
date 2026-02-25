@@ -1,9 +1,7 @@
 /**
- * ONYX REMOTE SPECIAL — Contrôle 100% ADB + Réseau Direct
- * ZERO Harmony Hub / ZERO IR — Contrôle absolu via ADB
- * Pioneer receiver via media_player.receiver (TCP réseau)
- * Epson projecteur via media_player.epson (ESC/VP.net)
- * Shield via ADB (androidtv.adb_command) + remote.shield (Android TV Remote)
+ * ONYX REMOTE — Télécommande Super Intelligente
+ * Contrôle 100% ADB + Réseau Direct — ZERO Harmony / ZERO IR
+ * 65+ chaînes FreeTV + toutes les apps + contrôle total
  */
 
 const RECEIVER = 'media_player.receiver';
@@ -11,16 +9,6 @@ const PROJECTOR = 'media_player.epson';
 const SHIELD = 'remote.shield';
 const SHIELD_MP = 'media_player.shield_2';
 const SHIELD_ADB = 'media_player.android_tv_192_168_1_80';
-
-const RECEIVER_INPUTS = {
-    shield: 'BD/DVD',
-    ps5: 'GAME',
-    cblsat: 'CBL/SAT',
-    aux: 'AUX',
-    net: 'NET',
-    cd: 'CD',
-    usb: 'USB',
-};
 
 const APPS = [
     { name: 'Netflix', pkg: 'com.netflix.ninja', icon: '🎬', cat: 'streaming' },
@@ -45,25 +33,109 @@ const CONSOLES = [
     { name: 'PlayStation 5', input: 'GAME', icon: '🎮' },
 ];
 
-const ISRAELI_CHANNELS = [
-    { num: 11, name: 'כאן 11' },
-    { num: 12, name: 'כאן חינוכית' },
-    { num: 13, name: 'רשת 13' },
-    { num: 14, name: 'קשת 12' },
-    { num: 23, name: 'i24 News' },
-    { num: 32, name: 'כאן 33' },
-    { num: 33, name: 'Sport 1' },
-    { num: 34, name: 'Sport 2' },
-    { num: 35, name: 'Sport 3' },
-    { num: 41, name: 'Music 24' },
-    { num: 51, name: 'HOT Cinema' },
-    { num: 52, name: 'HOT Zone' },
-    { num: 53, name: 'HOT 3' },
-    { num: 66, name: 'Nick Jr' },
-    { num: 67, name: 'Disney' },
-    { num: 91, name: 'HOT VOD' },
-    { num: 99, name: 'TV Guide' },
-];
+const FREETV_CHANNELS = {
+    broadcast: {
+        title: '📺 ברודקאסט',
+        channels: [
+            { name: 'כאן 11', icon: '🟢' },
+            { name: 'קשת 12', icon: '🔷' },
+            { name: 'רשת 13', icon: '🔵' },
+            { name: 'עכשיו 14', icon: '🟠' },
+            { name: '10STARS', icon: '⭐' },
+            { name: 'i24 News', icon: '🌍' },
+            { name: 'ערוץ 24', icon: '📰' },
+            { name: 'ערוץ 9', icon: '9️⃣' },
+            { name: 'כנסת', icon: '🏛️' },
+            { name: 'מכאן 33', icon: '3️⃣' },
+        ]
+    },
+    sport: {
+        title: '⚽ ספורט',
+        channels: [
+            { name: 'Sport 5', icon: '⚽' },
+            { name: 'Sport 5+', icon: '🏀' },
+            { name: 'Sport 5 Gold', icon: '🥇' },
+            { name: 'Sport 5 Live', icon: '🔴' },
+            { name: 'Sport 5 Stars', icon: '⭐' },
+            { name: 'Sport 5 MAX', icon: '💪' },
+            { name: 'Sport 5 4K', icon: '📺' },
+            { name: 'ONE', icon: '1️⃣' },
+            { name: 'ONE 2', icon: '2️⃣' },
+            { name: 'ONE DOCO', icon: '🎬' },
+            { name: 'EDGE', icon: '🏋️' },
+        ]
+    },
+    movies: {
+        title: '🎬 סרטים',
+        channels: [
+            { name: 'Movies Action', icon: '💥' },
+            { name: 'Movies Comedy', icon: '😂' },
+            { name: 'Movies Drama', icon: '🎭' },
+            { name: 'Movies Romantic', icon: '💕' },
+            { name: 'Movies Horror', icon: '👻' },
+            { name: 'Movies Thriller', icon: '🔪' },
+            { name: 'Movies Family', icon: '👨‍👩‍👧‍👦' },
+            { name: 'Movies Feel Good', icon: '😊' },
+            { name: 'Movies ישראלי', icon: '🇮🇱' },
+            { name: '10 Stars', icon: '🌟' },
+        ]
+    },
+    series: {
+        title: '📺 סדרות ובידור',
+        channels: [
+            { name: 'Series Global', icon: '🌐' },
+            { name: 'FreeTV דרמה', icon: '🎭' },
+            { name: 'FreeTV קומדיה', icon: '😄' },
+            { name: 'ויוה טלנובלות', icon: '💃' },
+            { name: 'ויוה איסטנבול', icon: '🇹🇷' },
+            { name: 'ואמוס', icon: '🇪🇸' },
+            { name: 'חתונה ממבט ראשון', icon: '💒' },
+            { name: 'נינג\'ה ישראל', icon: '🥷' },
+            { name: 'ארץ נהדרת', icon: '😆' },
+            { name: 'סברי מרנן', icon: '🍽️' },
+            { name: 'הכוכב הבא', icon: '🎤' },
+        ]
+    },
+    lifestyle: {
+        title: '🎨 לייף סטייל',
+        channels: [
+            { name: 'FreeTV לייף סטייל', icon: '✨' },
+            { name: 'FreeTV אוכל', icon: '🍳' },
+            { name: 'Foody', icon: '🍕' },
+            { name: 'Beautyz', icon: '💄' },
+            { name: 'FreeTV דוקו', icon: '🎥' },
+            { name: 'ערוץ דוק', icon: '📚' },
+            { name: 'מוזיקה IL', icon: '🎵' },
+            { name: 'ערוץ הקריוקי', icon: '🎤' },
+        ]
+    },
+    kids: {
+        title: '🧒 ילדים',
+        channels: [
+            { name: 'ערוץ הילדים', icon: '👦' },
+            { name: 'FOMO', icon: '📱' },
+            { name: 'בייבי', icon: '👶' },
+            { name: 'שירי ילדותי', icon: '🎵' },
+            { name: 'יויו', icon: '🪀' },
+            { name: 'פלא', icon: '✨' },
+            { name: 'A+', icon: '📝' },
+            { name: 'ערוץ הכוכבים', icon: '⭐' },
+            { name: 'ילדותי', icon: '🧸' },
+            { name: 'לוגי', icon: '🧩' },
+            { name: 'כאן חינוכית', icon: '📖' },
+            { name: 'ג\'וניור', icon: '🎮' },
+        ]
+    },
+    international: {
+        title: '🌍 בינלאומי',
+        channels: [
+            { name: 'France 24', icon: '🇫🇷' },
+            { name: 'i24 English', icon: '🇬🇧' },
+            { name: 'i24 Français', icon: '🇫🇷' },
+            { name: 'Daystar', icon: '⛪' },
+        ]
+    },
+};
 
 const CINEMA = {
     lights: [
@@ -89,7 +161,7 @@ const ALL_IDS = [
     ...CINEMA.speakers.map(s => s.id),
 ];
 
-const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false, activeTab: 'apps' };
+const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false };
 
 function lockBusy() {
     S.busy = true; setBusy(true);
@@ -102,18 +174,18 @@ function unlockBusy() { S.busy = false; setBusy(false); clearTimeout(S.busyTimer
    API
    ============================================================ */
 async function haGet(path) {
-    const res = await fetch(`/api/ha?path=${encodeURIComponent(path)}`);
-    if (!res.ok) throw new Error(`${res.status}`);
-    return res.json();
+    const r = await fetch(`/api/ha?path=${encodeURIComponent(path)}`);
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
 }
 
 async function haPost(path, body) {
-    const res = await fetch(`/api/ha?path=${encodeURIComponent(path)}`, {
+    const r = await fetch(`/api/ha?path=${encodeURIComponent(path)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`${res.status}`);
-    return res.json();
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
 }
 
 async function fetchStates() {
@@ -132,7 +204,7 @@ async function callSvc(domain, service, data) {
     catch (e) { console.error('[Onyx]', e); return false; }
 }
 
-async function adbCmd(cmd) {
+async function adb(cmd) {
     return callSvc('androidtv', 'adb_command', { entity_id: SHIELD_ADB, command: cmd });
 }
 
@@ -142,34 +214,30 @@ function isProjectorOn() { return isOn(PROJECTOR); }
 function isReceiverOn() { return isOn(RECEIVER); }
 
 function getShieldApp() {
-    const adbApp = S.entities[SHIELD_ADB]?.attr?.app_id;
-    const mpApp = S.entities[SHIELD_MP]?.attr?.app_name;
-    const rmtApp = S.entities[SHIELD]?.attr?.current_activity;
-    const raw = adbApp || mpApp || rmtApp || null;
-    if (raw === 'com.google.android.backdrop' || raw === 'com.google.android.tvlauncher') return null;
+    const raw = S.entities[SHIELD_ADB]?.attr?.app_id
+        || S.entities[SHIELD_MP]?.attr?.app_name
+        || S.entities[SHIELD]?.attr?.current_activity || null;
+    if (!raw || raw === 'com.google.android.backdrop' || raw === 'com.google.android.tvlauncher') return null;
     return raw;
 }
 
 /* ============================================================
-   CONTRÔLE ADB — Lancement d'apps via ADB (méthode la plus fiable)
+   CONTRÔLE ADB
    ============================================================ */
-async function adbLaunchApp(pkg) {
-    toast(`📱 פותח ${APPS.find(a => a.pkg === pkg)?.name || pkg}...`, 'info');
-    await adbCmd(`am start -a android.intent.action.VIEW -n $(cmd package resolve-activity --brief ${pkg} | tail -1) || am start $(pm resolve-activity --brief ${pkg} | tail -n 1) || monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`);
+async function adbLaunch(pkg) {
+    await adb(`monkey -p ${pkg} -c android.intent.category.LEANBACK_LAUNCHER 1 2>/dev/null || monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`);
 }
 
-async function adbSendText(text) {
+async function adbText(text) {
     if (!text) return;
-    await adbCmd(`input text "${text.replace(/"/g, '\\"')}"`);
+    await adb(`input text "${text.replace(/["\\ ]/g, c => '\\' + c)}"`);
     toast(`⌨️ "${text}" נשלח`, 'success');
 }
 
-async function adbSendKey(keycode) {
-    await adbCmd(`input keyevent ${keycode}`);
-}
+async function adbKey(k) { await adb(`input keyevent ${k}`); }
 
 /* ============================================================
-   CONTRÔLE RÉSEAU DIRECT — Projecteur + Receiver
+   CONTRÔLE RÉSEAU — Projecteur + Receiver
    ============================================================ */
 async function projectorOn() {
     toast('📽️ מדליק מקרן...', 'info');
@@ -179,7 +247,7 @@ async function projectorOn() {
         await fetchStates();
         if (isProjectorOn()) { toast('✅ מקרן דלוק!', 'success'); return true; }
     }
-    toast('⚠️ בדוק מקרן — ייתכן שצריך להפעיל "Standby Mode: Communication On"', 'error');
+    toast('⚠️ בדוק מקרן', 'error');
     return false;
 }
 
@@ -204,134 +272,91 @@ async function receiverOff() {
     setTimeout(fetchStates, 3000);
 }
 
-async function receiverSetInput(source) {
-    await callSvc('media_player', 'select_source', { entity_id: RECEIVER, source });
+async function setInput(src) {
+    await callSvc('media_player', 'select_source', { entity_id: RECEIVER, source: src });
 }
 
 /* ============================================================
-   SMART SOURCE — allume tout + lance l'app via ADB
+   CINEMA — Allumage automatique complet
+   ============================================================ */
+async function ensureCinema() {
+    const need = !isProjectorOn() || !isReceiverOn();
+    const tasks = [
+        ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
+        callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+        adbKey('KEYCODE_WAKEUP'),
+    ];
+    if (!isProjectorOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
+    if (!isReceiverOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
+    await Promise.all(tasks);
+    if (need) await sleep(5000);
+    else await sleep(500);
+    await Promise.all([
+        setInput('BD/DVD'),
+        callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
+    ]);
+    await sleep(500);
+}
+
+/* ============================================================
+   SMART SOURCE — App via ADB
    ============================================================ */
 async function smartSource(app) {
     if (S.busy) return;
     lockBusy();
     toast(`🎬 ${app.name} — מפעיל...`, 'info');
-
     try {
-        const needPower = !isProjectorOn() || !isReceiverOn();
-
-        const parallel = [
-            ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
-            callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
-            adbSendKey('KEYCODE_WAKEUP'),
-        ];
-        if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
-        if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
-        await Promise.all(parallel);
-
-        if (needPower) await sleep(5000);
-        else await sleep(500);
-
-        await Promise.all([
-            receiverSetInput('BD/DVD'),
-            callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
-        ]);
-
-        await sleep(1000);
-        await adbLaunchApp(app.pkg);
-
+        await ensureCinema();
+        await adbLaunch(app.pkg);
         await sleep(3000);
         await fetchStates();
         toast(`✅ ${app.name} — מוכן!`, 'success');
-    } catch (e) {
-        console.error('[Onyx] smartSource error:', e);
-        toast(`⚠️ שגיאה בהפעלת ${app.name}`, 'error');
-    }
-
+    } catch (e) { console.error(e); toast(`⚠️ שגיאה`, 'error'); }
     unlockBusy();
 }
 
-async function smartConsole(console_item) {
+async function smartConsole(c) {
     if (S.busy) return;
     lockBusy();
-    toast(`🎮 ${console_item.name} — מפעיל...`, 'info');
-
+    toast(`🎮 ${c.name} — מפעיל...`, 'info');
     try {
-        const parallel = [
+        const tasks = [
             ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
             callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
         ];
-        if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
-        if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
-        await Promise.all(parallel);
-
+        if (!isProjectorOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
+        if (!isReceiverOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
+        await Promise.all(tasks);
         await sleep(5000);
-
         await Promise.all([
-            receiverSetInput(console_item.input),
+            setInput(c.input),
             callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
         ]);
-
         await sleep(2000);
         await fetchStates();
-        toast(`✅ ${console_item.name} — מוכן!`, 'success');
-    } catch (e) {
-        console.error('[Onyx] smartConsole error:', e);
-        toast(`⚠️ שגיאה בהפעלת ${console_item.name}`, 'error');
-    }
-
+        toast(`✅ ${c.name} — מוכן!`, 'success');
+    } catch (e) { console.error(e); toast(`⚠️ שגיאה`, 'error'); }
     unlockBusy();
 }
 
 /* ============================================================
-   CHAÎNES TV — Via ADB (envoi numéros dans FreeTV)
+   FREETV — Lancement chaîne directe
    ============================================================ */
-async function goToChannel(num) {
+async function launchFreeTV(channelName) {
     if (S.busy) return;
     lockBusy();
-    toast(`📺 ערוץ ${num} — מפעיל...`, 'info');
-
+    toast(`📺 ${channelName} — מפעיל...`, 'info');
     try {
-        const needPower = !isProjectorOn() || !isReceiverOn();
-
-        if (needPower) {
-            const parallel = [
-                ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
-                callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
-                adbSendKey('KEYCODE_WAKEUP'),
-            ];
-            if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
-            if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
-            await Promise.all(parallel);
-            await sleep(5000);
-            await Promise.all([
-                receiverSetInput('BD/DVD'),
-                callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
-            ]);
-            await sleep(1000);
-        }
-
-        await adbLaunchApp('tv.freetv.androidtv');
+        await ensureCinema();
+        await adbLaunch('tv.freetv.androidtv');
         await sleep(4000);
-
-        const digits = String(num).split('');
-        for (const d of digits) {
-            await adbSendKey(`KEYCODE_${d}`);
-            await sleep(300);
-        }
-
-        await sleep(1000);
-        await fetchStates();
-        toast(`✅ ערוץ ${num} פעיל`, 'success');
-    } catch (e) {
-        console.error('[Onyx] goToChannel error:', e);
-        toast(`⚠️ שגיאה`, 'error');
-    }
-
+        toast(`✅ FreeTV פתוח — ${channelName}`, 'success');
+    } catch (e) { console.error(e); toast(`⚠️ שגיאה`, 'error'); }
     unlockBusy();
 }
 
-async function sendChannelDigit(d) {
-    await adbSendKey(`KEYCODE_${d}`);
+async function sendDigit(d) {
+    await adbKey(`KEYCODE_${d}`);
 }
 
 /* ============================================================
@@ -340,22 +365,10 @@ async function sendChannelDigit(d) {
 async function runScene(name) {
     if (S.busy) return;
     lockBusy();
-
     try {
         if (name === 'cinema_on') {
             toast('🎬 מפעיל קולנוע...', 'info');
-            await Promise.all([
-                ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
-                callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
-                callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }),
-                callSvc('media_player', 'turn_on', { entity_id: RECEIVER }),
-                adbSendKey('KEYCODE_WAKEUP'),
-            ]);
-            await sleep(4000);
-            await Promise.all([
-                receiverSetInput('BD/DVD'),
-                callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
-            ]);
+            await ensureCinema();
             await fetchStates();
             toast('✅ קולנוע מוכן!', 'success');
         } else if (name === 'cinema_off') {
@@ -363,7 +376,7 @@ async function runScene(name) {
             await Promise.all([
                 callSvc('media_player', 'turn_off', { entity_id: PROJECTOR }),
                 callSvc('media_player', 'turn_off', { entity_id: RECEIVER }),
-                adbSendKey('KEYCODE_SLEEP'),
+                adbKey('KEYCODE_SLEEP'),
                 callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
             ]);
             await sleep(3000);
@@ -386,8 +399,7 @@ async function runScene(name) {
             await fetchStates();
             toast('⏸ תאורת הפסקה', 'success');
         }
-    } catch { toast('שגיאה בהפעלה', 'error'); }
-
+    } catch { toast('שגיאה', 'error'); }
     unlockBusy();
 }
 
@@ -422,11 +434,6 @@ async function devOff(id) {
     setTimeout(fetchStates, 3000);
 }
 
-async function toggleDev(id) {
-    try { isOn(id) ? await devOff(id) : await devOn(id); }
-    catch { toast('⚠️ שגיאה', 'error'); }
-}
-
 async function volStep(dir) {
     const svc = dir === 'up' ? 'volume_up' : 'volume_down';
     await callSvc('media_player', svc, { entity_id: RECEIVER });
@@ -446,7 +453,7 @@ async function toggleMute() {
     setTimeout(fetchStates, 800);
 }
 
-async function sendRemoteCmd(cmd) {
+async function sendCmd(cmd) {
     try { await callSvc('remote', 'send_command', { entity_id: SHIELD, command: cmd }); }
     catch { toast('⚠️ שגיאה', 'error'); }
 }
@@ -457,25 +464,32 @@ async function allLights(svc) {
     setTimeout(fetchStates, 1500);
 }
 
+async function toggleDev(id) {
+    try { isOn(id) ? await devOff(id) : await devOn(id); }
+    catch { toast('⚠️ שגיאה', 'error'); }
+}
+
 /* ============================================================
    RENDER
    ============================================================ */
 function renderAll() {
     renderStatusBar(); renderProjectorStatus(); renderLights();
     renderCurtain(); renderSources(); renderAudio();
-    renderChannels(); renderSpeakers(); updateHero();
+    renderFreeTV(); renderSpeakers(); updateHero();
 }
 
 function renderStatusBar() {
     const pOn = isProjectorOn(), rOn = isReceiverOn();
     const cState = S.entities[CINEMA.cover.id]?.state || 'unknown';
     const lightsOn = CINEMA.lights.filter(l => S.entities[l.id]?.state === 'on').length;
+    const adbState = S.entities[SHIELD_ADB]?.state || 'unavailable';
 
     setStatItem('statProjector', pOn, pOn ? 'דלוק' : 'כבוי');
     setStatItem('statReceiver', rOn, rOn ? 'דלוק' : 'כבוי');
     const cLabels = { open: 'פתוח', closed: 'סגור', opening: 'נפתח', closing: 'נסגר' };
     setStatItem('statCurtain', cState === 'open', cLabels[cState] || cState);
     setStatItem('statLights', lightsOn > 0, `${lightsOn}/${CINEMA.lights.length}`);
+    setStatItem('statAdb', adbState !== 'unavailable', adbState === 'unavailable' ? 'מנותק' : 'ADB');
 
     const actEl = document.getElementById('currentActivity');
     const app = getShieldApp();
@@ -551,38 +565,26 @@ function renderCurtain() {
 
 function renderSources() {
     const g = document.getElementById('sourcesGrid'); if (!g) return;
-    const currentApp = getShieldApp();
+    const cur = getShieldApp();
 
-    const streaming = APPS.filter(a => a.cat === 'streaming');
-    const israel = APPS.filter(a => a.cat === 'israel' || a.cat === 'tv');
-    const music = APPS.filter(a => a.cat === 'music');
-    const tools = APPS.filter(a => a.cat === 'tools');
+    const cats = [
+        { key: 'streaming', title: '📺 סטרימינג', items: APPS.filter(a => a.cat === 'streaming') },
+        { key: 'israel', title: '🇮🇱 ישראלי', items: APPS.filter(a => a.cat === 'israel' || a.cat === 'tv') },
+        { key: 'music', title: '🎵 מוזיקה', items: APPS.filter(a => a.cat === 'music') },
+        { key: 'tools', title: '🛠️ כלים', items: APPS.filter(a => a.cat === 'tools') },
+    ];
 
     let html = '';
-
-    html += `<div class="src-section-title">📺 סטרימינג</div>`;
-    html += streaming.map(a =>
-        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
-    ).join('');
-
-    html += `<div class="src-section-title">🇮🇱 ערוצים ישראליים</div>`;
-    html += israel.map(a =>
-        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
-    ).join('');
-
-    html += `<div class="src-section-title">🎵 מוזיקה</div>`;
-    html += music.map(a =>
-        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
-    ).join('');
+    for (const cat of cats) {
+        html += `<div class="src-section-title">${cat.title}</div>`;
+        html += cat.items.map(a =>
+            `<div class="src ${cur === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
+        ).join('');
+    }
 
     html += `<div class="src-section-title">🎮 קונסולות</div>`;
     html += CONSOLES.map((c, i) =>
-        `<div class="src src-console" data-console="${i}"><div class="src-e">${c.icon}</div><div class="src-n">${c.name}</div></div>`
-    ).join('');
-
-    html += `<div class="src-section-title">🛠️ כלים</div>`;
-    html += tools.map(a =>
-        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
+        `<div class="src src-console" data-ci="${i}"><div class="src-e">${c.icon}</div><div class="src-n">${c.name}</div></div>`
     ).join('');
 
     html += `<div class="src-section-title"></div>`;
@@ -592,24 +594,29 @@ function renderSources() {
 
     g.querySelectorAll('.src[data-pkg]').forEach(t => {
         t.addEventListener('click', () => {
-            const app = APPS.find(a => a.pkg === t.dataset.pkg);
-            if (app) smartSource(app);
+            const a = APPS.find(a => a.pkg === t.dataset.pkg);
+            if (a) smartSource(a);
         });
     });
-
     g.querySelectorAll('.src-console').forEach(t => {
-        t.addEventListener('click', () => smartConsole(CONSOLES[parseInt(t.dataset.console)]));
+        t.addEventListener('click', () => smartConsole(CONSOLES[parseInt(t.dataset.ci)]));
     });
-
     document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
 }
 
-function renderChannels() {
-    const g = document.getElementById('channelsGrid'); if (!g) return;
-    g.innerHTML = ISRAELI_CHANNELS.map(c =>
-        `<div class="ch-tile" data-ch="${c.num}"><span class="ch-num">${c.num}</span><span class="ch-name">${c.name}</span></div>`
-    ).join('');
-    g.querySelectorAll('.ch-tile').forEach(t => t.addEventListener('click', () => goToChannel(parseInt(t.dataset.ch))));
+function renderFreeTV() {
+    const g = document.getElementById('freetvGrid'); if (!g) return;
+    let html = '';
+    for (const [, cat] of Object.entries(FREETV_CHANNELS)) {
+        html += `<div class="ftv-cat-title">${cat.title}</div>`;
+        html += cat.channels.map(ch =>
+            `<div class="ftv-ch" data-name="${ch.name}"><span class="ftv-icon">${ch.icon}</span><span class="ftv-name">${ch.name}</span></div>`
+        ).join('');
+    }
+    g.innerHTML = html;
+    g.querySelectorAll('.ftv-ch').forEach(t => {
+        t.addEventListener('click', () => launchFreeTV(t.dataset.name));
+    });
 }
 
 function renderAudio() {
@@ -723,8 +730,8 @@ function initEvents() {
         });
         vr.addEventListener('mousedown', () => S.volDragging = true);
         vr.addEventListener('touchstart', () => S.volDragging = true, { passive: true });
-        vr.addEventListener('mouseup', () => { S.volDragging = false; });
-        vr.addEventListener('touchend', () => { S.volDragging = false; }, { passive: true });
+        vr.addEventListener('mouseup', () => S.volDragging = false);
+        vr.addEventListener('touchend', () => S.volDragging = false, { passive: true });
     }
 
     document.getElementById('btnRefresh')?.addEventListener('click', () => { fetchStates(); toast('🔄 מרענן...', 'info'); });
@@ -733,28 +740,31 @@ function initEvents() {
         b.style.transform = 'scale(0.85)';
         b.style.boxShadow = '0 0 20px rgba(0,255,200,0.6)';
         setTimeout(() => { b.style.transform = ''; b.style.boxShadow = ''; }, 200);
-        sendRemoteCmd(b.dataset.cmd);
+        sendCmd(b.dataset.cmd);
     }));
 
     document.getElementById('kbToggle')?.addEventListener('click', () => document.getElementById('kbPanel')?.classList.toggle('hidden'));
     document.getElementById('kbSend')?.addEventListener('click', () => {
         const inp = document.getElementById('kbInput');
-        if (inp?.value) { adbSendText(inp.value); inp.value = ''; }
+        if (inp?.value) { adbText(inp.value); inp.value = ''; }
     });
     document.getElementById('kbInput')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { adbSendText(e.target.value); e.target.value = ''; }
+        if (e.key === 'Enter') { adbText(e.target.value); e.target.value = ''; }
     });
 
     document.querySelectorAll('.numpad-btn[data-digit]').forEach(b => b.addEventListener('click', () => {
         b.style.transform = 'scale(0.85)';
-        setTimeout(() => { b.style.transform = ''; }, 150);
-        sendChannelDigit(b.dataset.digit);
+        setTimeout(() => b.style.transform = '', 150);
+        sendDigit(b.dataset.digit);
     }));
 
     document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.mn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
-        const map = { hero: 'pcHero', lights: 'lightsGrid', sources: 'sourcesGrid', channels: 'channelsSection', remote: 'remoteCard', audio: 'volNum' };
+        const map = {
+            hero: 'pcHero', sources: 'sourcesGrid', freetv: 'freetvGrid',
+            remote: 'remoteCard', audio: 'volNum', lights: 'lightsGrid',
+        };
         const t = map[b.dataset.go];
         if (t) document.getElementById(t)?.closest('.glass-card, section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
@@ -773,8 +783,8 @@ async function init() {
     initEvents();
     const ok = await fetchStates();
     showView('app');
-    if (ok) { startPoll(); }
-    else { toast('⚠️ שגיאת חיבור — בודק שוב...', 'error'); setTimeout(async () => { await fetchStates(); startPoll(); }, 3000); }
+    if (ok) startPoll();
+    else { toast('⚠️ שגיאת חיבור...', 'error'); setTimeout(async () => { await fetchStates(); startPoll(); }, 3000); }
 }
 
 document.addEventListener('DOMContentLoaded', init);
