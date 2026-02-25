@@ -429,7 +429,7 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
    AUDIO
    ============================================================ */
 .vol-num { font-family: var(--tech); font-size: 0.85rem; font-weight: 700; color: var(--neon); letter-spacing: 1px; margin-right: auto; text-shadow: 0 0 8px var(--ng); }
-.audio-row { display: flex; align-items: center; gap: 10px; }
+.audio-row { display: flex; align-items: center; gap: 10px; direction: ltr; }
 .vol-btn {
     width: 42px; height: 42px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
     border-radius: 50%; background: var(--glass); border: 1px solid var(--gb); color: var(--t2); transition: var(--tr);
@@ -440,8 +440,8 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 .vol-mute.muted { color: var(--red); border-color: rgba(255,71,87,0.25); background: var(--rd); }
 .vol-wrap { flex: 1; position: relative; padding: 10px 0; }
 .vol-bar { position: relative; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; }
-.vol-fill { position: absolute; top:0; right:0; bottom:0; width: 30%; background: linear-gradient(90deg, var(--neon), #0090ff); border-radius: 2px; box-shadow: 0 0 8px var(--ng); transition: width 0.1s; }
-.vol-knob { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--neon); border: 2px solid var(--bg); box-shadow: 0 0 10px var(--ng); transform: translate(50%, -50%); right: 30%; transition: right 0.1s; pointer-events: none; }
+.vol-fill { position: absolute; top:0; left:0; bottom:0; width: 30%; background: linear-gradient(90deg, #0090ff, var(--neon)); border-radius: 2px; box-shadow: 0 0 8px var(--ng); transition: width 0.1s; }
+.vol-knob { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--neon); border: 2px solid var(--bg); box-shadow: 0 0 10px var(--ng); transform: translate(-50%, -50%); left: 30%; transition: left 0.1s; pointer-events: none; }
 .vol-range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; -webkit-appearance: none; direction: ltr; z-index: 2; }
 
 /* ============================================================

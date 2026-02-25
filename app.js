@@ -450,7 +450,7 @@ function renderAudio() {
     const mb = document.getElementById('vMute');
     if (num) num.textContent = muted ? 'MUTE' : `${vol}%`;
     if (fill) fill.style.width = `${vol}%`;
-    if (knob) knob.style.right = `${vol}%`;
+    if (knob) knob.style.left = `${vol}%`;
     if (range && !range.matches(':active')) range.value = vol;
     if (mb) mb.classList.toggle('muted', muted);
 }
@@ -549,7 +549,7 @@ function initEvents() {
         const v = parseInt(e.target.value);
         const f = document.getElementById('volFill'), k = document.getElementById('volKnob'), n = document.getElementById('volNum');
         if (f) f.style.width = `${v}%`;
-        if (k) k.style.right = `${v}%`;
+        if (k) k.style.left = `${v}%`;
         if (n) n.textContent = `${v}%`;
         clearTimeout(vt); vt = setTimeout(() => setVol(v), 300);
     });
