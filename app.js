@@ -160,7 +160,7 @@ async function receiverSetInput(source) {
 
 async function launchApp(pkg) {
     await callSvc('media_player', 'play_media', {
-        entity_id: SHIELD_CAST,
+        entity_id: SHIELD_MP,
         media_content_id: pkg,
         media_content_type: 'app',
     });
