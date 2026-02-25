@@ -441,8 +441,24 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 .src-console:hover { background: rgba(139,92,246,0.18) !important; }
 
 /* ============================================================
-   FREETV — Bouton ouverture + Navigation CH
+   FREETV — Grille chaînes + Navigation CH
    ============================================================ */
+.freetv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 6px; margin-bottom: 16px;
+}
+.ftv-ch {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 8px; border-radius: 10px;
+    background: var(--glass); border: 1px solid var(--gb);
+    cursor: pointer; transition: var(--tr);
+    user-select: none; -webkit-user-select: none;
+}
+.ftv-ch:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
+.ftv-ch:active { transform: scale(0.93); }
+.ftv-icon { font-size: 1.1rem; flex-shrink: 0; }
+.ftv-name { font-size: 0.58rem; font-weight: 600; color: var(--t2); line-height: 1.2; }
 .ftv-open-btn {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 100%; padding: 20px 16px; margin-bottom: 16px;

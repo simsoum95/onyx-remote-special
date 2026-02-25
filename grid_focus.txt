@@ -1,0 +1,2 @@
+﻿UI hierchary dumped to: /sdcard/grid.xml
+<node index="0" text="" resource-id="tv.freetv.androidtv:id/cardContainer" class="android.view.ViewGroup" package="tv.freetv.androidtv" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" focused="true" scrollable="false" long-clickable="false" password="false" selected="true" bounds="[1414,573][1752,799]"

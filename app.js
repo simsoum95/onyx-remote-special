@@ -33,6 +33,27 @@ const CONSOLES = [
     { name: 'PlayStation 5', input: 'GAME', icon: '🎮' },
 ];
 
+const TV_CHANNELS = [
+    { name: 'כאן 11', icon: '🟢', row: 0, col: 0 },
+    { name: 'קשת 12', icon: '🔷', row: 0, col: 1 },
+    { name: 'רשת 13', icon: '🔵', row: 0, col: 2 },
+    { name: 'ערוץ 14', icon: '🟠', row: 0, col: 3 },
+    { name: 'i24 News', icon: '🌍', row: 0, col: 4 },
+    { name: '10STARS', icon: '⭐', row: 0, col: 5 },
+    { name: 'כנסת', icon: '🏛️', row: 0, col: 6 },
+    { name: 'מכאן 33', icon: '3️⃣', row: 0, col: 7 },
+    { name: 'ערוץ 9', icon: '9️⃣', row: 0, col: 8 },
+    { name: 'ערוץ 24', icon: '📰', row: 0, col: 9 },
+    { name: 'ספורט 5', icon: '⚽', row: 1, col: 0 },
+    { name: 'ספורט 5+', icon: '🏀', row: 1, col: 1 },
+    { name: 'ספורט 5 Gold', icon: '🥇', row: 1, col: 2 },
+    { name: 'ספורט 5 Live', icon: '🔴', row: 1, col: 3 },
+    { name: 'ספורט 5 Stars', icon: '⭐', row: 1, col: 4 },
+    { name: 'ספורט 5 MAX', icon: '💪', row: 1, col: 5 },
+    { name: 'ONE', icon: '1️⃣', row: 1, col: 6 },
+    { name: 'ONE 2', icon: '2️⃣', row: 1, col: 7 },
+    { name: 'EDGE', icon: '🏋️', row: 1, col: 8 },
+];
 
 const CINEMA = {
     lights: [
@@ -179,7 +200,6 @@ async function setInput(src) {
 async function ensureCinema() {
     const need = !isProjectorOn() || !isReceiverOn();
     const tasks = [
-        ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
         callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
         adbKey('KEYCODE_WAKEUP'),
     ];
@@ -218,7 +238,6 @@ async function smartConsole(c) {
     toast(`🎮 ${c.name} — מפעיל...`, 'info');
     try {
         const tasks = [
-            ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
             callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
         ];
         if (!isProjectorOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
@@ -237,7 +256,7 @@ async function smartConsole(c) {
 }
 
 /* ============================================================
-   FREETV — Ouverture + Navigation TV
+   FREETV — Ouverture directe d'une chaîne
    ============================================================ */
 async function openFreeTV() {
     if (S.busy) return;
@@ -253,17 +272,32 @@ async function openFreeTV() {
     unlockBusy();
 }
 
-async function tvChannelUp() {
-    await adb('input keyevent KEYCODE_CHANNEL_UP');
+async function openChannel(ch) {
+    if (S.busy) return;
+    lockBusy();
+    toast(`📺 ${ch.name} — מפעיל...`, 'info');
+    try {
+        await ensureCinema();
+        let cmd = 'am force-stop tv.freetv.androidtv && sleep 1';
+        cmd += ' && monkey -p tv.freetv.androidtv -c android.intent.category.LEANBACK_LAUNCHER 1';
+        cmd += ' && sleep 7';
+        cmd += ' && input keyevent KEYCODE_DPAD_RIGHT && sleep 1';
+        cmd += ' && input keyevent KEYCODE_DPAD_DOWN && sleep 0.5';
+        cmd += ' && input keyevent KEYCODE_DPAD_CENTER && sleep 3';
+        for (let r = 0; r < ch.row; r++) cmd += ' && input keyevent KEYCODE_DPAD_DOWN && sleep 0.4';
+        for (let c = 0; c < ch.col; c++) cmd += ' && input keyevent KEYCODE_DPAD_LEFT && sleep 0.4';
+        cmd += ' && input keyevent KEYCODE_DPAD_CENTER';
+        await adb(cmd);
+        await sleep(3000);
+        await fetchStates();
+        toast(`✅ ${ch.name} — משודר!`, 'success');
+    } catch (e) { console.error(e); toast('⚠️ שגיאה', 'error'); }
+    unlockBusy();
 }
 
-async function tvChannelDown() {
-    await adb('input keyevent KEYCODE_CHANNEL_DOWN');
-}
-
-async function sendDigit(d) {
-    await adbKey(`KEYCODE_${d}`);
-}
+async function tvChannelUp() { await adb('input keyevent KEYCODE_CHANNEL_UP'); }
+async function tvChannelDown() { await adb('input keyevent KEYCODE_CHANNEL_DOWN'); }
+async function sendDigit(d) { await adbKey(`KEYCODE_${d}`); }
 
 /* ============================================================
    SCENES
@@ -510,7 +544,15 @@ function renderSources() {
     document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
 }
 
-function renderFreeTV() {}
+function renderFreeTV() {
+    const g = document.getElementById('freetvGrid'); if (!g) return;
+    g.innerHTML = TV_CHANNELS.map((ch, i) =>
+        `<div class="ftv-ch" data-chi="${i}"><span class="ftv-icon">${ch.icon}</span><span class="ftv-name">${ch.name}</span></div>`
+    ).join('');
+    g.querySelectorAll('.ftv-ch').forEach(t => {
+        t.addEventListener('click', () => openChannel(TV_CHANNELS[parseInt(t.dataset.chi)]));
+    });
+}
 
 function renderAudio() {
     const e = S.entities[RECEIVER]; if (!e) return;

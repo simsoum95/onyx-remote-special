@@ -1,0 +1,1 @@
+﻿<node index="2" text="" resource-id="tv.freetv.androidtv:id/menu_item" class="android.view.ViewGroup" package="tv.freetv.androidtv" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" focused="true" scrollable="false" long-clickable="true" password="false" selected="false" bounds="[1600,272][1896,344]"
