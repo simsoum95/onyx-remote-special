@@ -159,6 +159,10 @@ async function receiverSetInput(source) {
 }
 
 async function launchApp(pkg) {
+    await callSvc('remote', 'send_command', { entity_id: SHIELD, command: 'HOME' });
+    await sleep(1500);
+    await callSvc('remote', 'turn_on', { entity_id: SHIELD, activity: pkg });
+    await sleep(2000);
     await callSvc('media_player', 'play_media', {
         entity_id: SHIELD_MP,
         media_content_id: pkg,
@@ -180,18 +184,21 @@ async function smartSource(app) {
         const parallel = [
             ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
             callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+            callSvc('remote', 'send_command', { entity_id: SHIELD, command: 'HOME' }),
         ];
         if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
         if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
         await Promise.all(parallel);
 
-        if (needPower) await sleep(4000);
+        if (needPower) await sleep(6000);
+        else await sleep(1000);
 
         await Promise.all([
             app.input ? receiverSetInput(app.input) : Promise.resolve(),
             callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
-            launchApp(app.pkg),
         ]);
+        await sleep(1000);
+        await launchApp(app.pkg);
 
         await sleep(2000);
         await fetchStates();
