@@ -346,8 +346,8 @@ function stopPoll() { if (S.poll) { clearInterval(S.poll); S.poll = null; } }
    SETUP — Premier lancement
    ============================================================ */
 function loadConfig() {
-    S.haUrl = localStorage.getItem('onyx_ha_url') || '';
-    S.haToken = localStorage.getItem('onyx_ha_token') || '';
+    S.haUrl = localStorage.getItem('onyx_ha_url') || 'https://na4kp2cjkejmeprgklgswxssuihm0ngr.ui.nabu.casa';
+    S.haToken = localStorage.getItem('onyx_ha_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjNDUxY2M1NmU0OTc0MTIxOTg5MDE2ZDAxZTQyYjkxYyIsImlhdCI6MTc3MjAxOTIzOCwiZXhwIjoyMDg3Mzc5MjM4fQ.J4p3A3Tj3Nil_n3l9nsD7RMxPa_6sDqlyrhk9HyZyKg';
 }
 
 function saveConfig(url, token) {
@@ -458,11 +458,14 @@ async function init() {
 
     if (S.haUrl && S.haToken) {
         showView('loader');
+        saveConfig(S.haUrl, S.haToken);
         const ok = await testConnection();
         if (ok) {
             await launchApp();
         } else {
             showView('setup');
+            document.getElementById('inputUrl').value = S.haUrl;
+            document.getElementById('inputToken').value = S.haToken;
         }
     } else {
         showView('setup');
