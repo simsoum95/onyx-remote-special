@@ -346,7 +346,7 @@ function renderAll() {
 }
 
 function renderPower() {
-    S.cinemaOn = isProjectorOn() || isReceiverOn();
+    S.cinemaOn = isProjectorOn() && isReceiverOn();
     const app = getShieldApp();
     const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : null;
 
