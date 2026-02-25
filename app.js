@@ -456,20 +456,9 @@ async function init() {
     initSetup();
     loadConfig();
 
-    if (S.haUrl && S.haToken) {
-        showView('loader');
-        saveConfig(S.haUrl, S.haToken);
-        const ok = await testConnection();
-        if (ok) {
-            await launchApp();
-        } else {
-            showView('setup');
-            document.getElementById('inputUrl').value = S.haUrl;
-            document.getElementById('inputToken').value = S.haToken;
-        }
-    } else {
-        showView('setup');
-    }
+    showView('loader');
+    saveConfig(S.haUrl, S.haToken);
+    await launchApp();
 }
 
 document.addEventListener('DOMContentLoaded', init);
