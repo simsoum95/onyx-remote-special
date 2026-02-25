@@ -47,8 +47,9 @@ const CINEMA = {
         { name: 'Netflix', activity: 'Netflix', emoji: '🎬' },
         { name: 'Free TV', activity: 'FreeTV', emoji: '📡' },
         { name: 'Apple TV', activity: 'Watch Apple TV', emoji: '📺' },
-        { name: 'PS5', activity: 'PS5', emoji: '🎮' },
+        { name: 'PS5', activity: 'PS5', emoji: '🎮', extra: { ps5: true } },
         { name: 'Plex', activity: 'Plex', emoji: '🎞️' },
+        { name: 'Switch', activity: 'Startup Show', emoji: '🕹️', extra: { inputCmd: 'InputGame' } },
     ],
 };
 
@@ -219,7 +220,7 @@ async function runScene(name) {
 /* ============================================================
    SOURCE = Harmony Activity (allume TOUT + bascule la source)
    ============================================================ */
-async function smartSource(activityName, label) {
+async function smartSource(activityName, label, extra) {
     if (S.busy) return;
     S.busy = true;
     setBusy(true);
@@ -230,6 +231,27 @@ async function smartSource(activityName, label) {
         await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
         await startHarmonyActivity(activityName);
         await sleep(6000);
+
+        if (extra?.ps5) {
+            toast('🎮 מדליק PS5...', 'info');
+            await callSvc('remote', 'send_command', {
+                entity_id: HARMONY, device: HARMONY_DEVICES.ps5, command: 'PowerOn',
+            });
+            await sleep(3000);
+            await callSvc('remote', 'send_command', {
+                entity_id: HARMONY, device: HARMONY_DEVICES.ps5, command: 'PowerToggle',
+            });
+            await sleep(2000);
+        }
+
+        if (extra?.inputCmd) {
+            toast('🔄 מחליף כניסה...', 'info');
+            await callSvc('remote', 'send_command', {
+                entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: extra.inputCmd,
+            });
+            await sleep(2000);
+        }
+
         await fetchStates();
 
         if (!isProjectorOn()) {
@@ -483,11 +505,16 @@ function renderSources() {
     const activity = getCurrentActivity();
     const isActive = !!activity && activity !== 'PowerOff';
 
-    g.innerHTML = CINEMA.sources.map(s =>
-        `<div class="src ${activity === s.activity ? 'active' : ''}" data-act="${s.activity}" data-name="${s.name}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`
+    g.innerHTML = CINEMA.sources.map((s, i) =>
+        `<div class="src ${activity === s.activity ? 'active' : ''}" data-idx="${i}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`
     ).join('') + (isActive ? `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>` : '');
 
-    g.querySelectorAll('.src:not(.src-off)').forEach(t => t.addEventListener('click', () => smartSource(t.dataset.act, t.dataset.name)));
+    g.querySelectorAll('.src:not(.src-off)').forEach(t => {
+        t.addEventListener('click', () => {
+            const src = CINEMA.sources[parseInt(t.dataset.idx)];
+            smartSource(src.activity, src.name, src.extra);
+        });
+    });
     document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
 }
 
