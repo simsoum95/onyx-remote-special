@@ -62,7 +62,7 @@ const ALL_IDS = [
     HARMONY,
 ];
 
-const S = { entities: {}, cinemaOn: false, busy: false, poll: null };
+const S = { entities: {}, cinemaOn: false, busy: false, poll: null, lastVol: 30, volDragging: false };
 
 /* ============================================================
    API
@@ -116,6 +116,19 @@ function isOn(id) { return ['on','playing','idle','paused'].includes(S.entities[
 
 function getCurrentActivity() {
     return S.entities[HARMONY]?.attr?.current_activity || null;
+}
+
+function isCinemaActive() {
+    const act = getCurrentActivity();
+    return !!act && act !== 'PowerOff';
+}
+
+function isReceiverOn() {
+    return isOn(CINEMA.receiver.id) || isCinemaActive();
+}
+
+function isProjectorOn() {
+    return isOn(CINEMA.projector.id) || isCinemaActive();
 }
 
 /* ============================================================
@@ -210,29 +223,31 @@ async function smartSource(activityName, label) {
     if (S.busy) return;
     S.busy = true;
     setBusy(true);
+    toast(`🎬 ${label} — מפעיל...`, 'info');
 
     try {
         await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
         await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
         await startHarmonyActivity(activityName);
-
+        await sleep(6000);
         await fetchStates();
-        if (!isOn(CINEMA.projector.id)) {
+
+        if (!isProjectorOn()) {
             toast('📽️ מדליק מקרן בנפרד...', 'info');
             await callSvc('remote', 'send_command', {
                 entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
             });
             await sleep(5000);
-            await fetchStates();
         }
-        if (!isOn(CINEMA.receiver.id)) {
+        if (!isReceiverOn()) {
             toast('🔊 מדליק מגבר בנפרד...', 'info');
             await callSvc('remote', 'send_command', {
                 entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'PowerOn',
             });
             await sleep(4000);
-            await fetchStates();
         }
+        await fetchStates();
+        toast(`✅ ${label} — מוכן!`, 'success');
     } catch { toast('שגיאה', 'error'); }
 
     S.busy = false;
@@ -301,17 +316,35 @@ async function toggleDev(id) {
 }
 
 async function volStep(dir) {
-    await callSvc('media_player', dir === 'up' ? 'volume_up' : 'volume_down', { entity_id: CINEMA.receiver.id });
-    setTimeout(fetchStates, 800);
+    const cmd = dir === 'up' ? 'VolumeUp' : 'VolumeDown';
+    if (isOn(CINEMA.receiver.id)) {
+        await callSvc('media_player', dir === 'up' ? 'volume_up' : 'volume_down', { entity_id: CINEMA.receiver.id });
+    } else {
+        await callSvc('remote', 'send_command', {
+            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: cmd,
+        });
+    }
+    S.lastVol = Math.max(0, Math.min(100, (S.lastVol || 30) + (dir === 'up' ? 3 : -3)));
+    renderAudio();
+    setTimeout(fetchStates, 1500);
 }
 
 async function setVol(v) {
-    await callSvc('media_player', 'volume_set', { entity_id: CINEMA.receiver.id, volume_level: v / 100 });
+    S.lastVol = v;
+    if (isOn(CINEMA.receiver.id)) {
+        await callSvc('media_player', 'volume_set', { entity_id: CINEMA.receiver.id, volume_level: v / 100 });
+    }
 }
 
 async function toggleMute() {
-    const m = S.entities[CINEMA.receiver.id]?.attr?.is_volume_muted || false;
-    await callSvc('media_player', 'volume_mute', { entity_id: CINEMA.receiver.id, is_volume_muted: !m });
+    if (isOn(CINEMA.receiver.id)) {
+        const m = S.entities[CINEMA.receiver.id]?.attr?.is_volume_muted || false;
+        await callSvc('media_player', 'volume_mute', { entity_id: CINEMA.receiver.id, is_volume_muted: !m });
+    } else {
+        await callSvc('remote', 'send_command', {
+            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'Mute',
+        });
+    }
     setTimeout(fetchStates, 800);
 }
 
@@ -356,12 +389,12 @@ function renderAll() {
 }
 
 function renderStatusBar() {
-    const pOn = isOn(CINEMA.projector.id);
-    const rOn = isOn(CINEMA.receiver.id);
+    const pOn = isProjectorOn();
+    const rOn = isReceiverOn();
+    const activity = getCurrentActivity();
     const cState = S.entities[CINEMA.cover.id]?.state || 'unknown';
     const lightsOn = CINEMA.lights.filter(l => S.entities[l.id]?.state === 'on').length;
     const lightsTotal = CINEMA.lights.length;
-    const activity = getCurrentActivity();
 
     setStatItem('statProjector', pOn, pOn ? 'דלוק' : 'כבוי');
     setStatItem('statReceiver', rOn, rOn ? 'דלוק' : 'כבוי');
@@ -386,8 +419,8 @@ function setStatItem(elId, on, text) {
 }
 
 function renderProjectorStatus() {
-    const pOn = isOn(CINEMA.projector.id);
-    const rOn = isOn(CINEMA.receiver.id);
+    const pOn = isProjectorOn();
+    const rOn = isReceiverOn();
     const activity = getCurrentActivity();
     const el = document.getElementById('projectorPanel');
     if (!el) return;
@@ -460,17 +493,20 @@ function renderSources() {
 
 function renderAudio() {
     const e = S.entities[CINEMA.receiver.id]; if (!e) return;
-    const vol = Math.round((e.attr.volume_level || 0) * 100);
+    const hasVol = e.attr.volume_level !== undefined;
+    const vol = hasVol ? Math.round(e.attr.volume_level * 100) : S.lastVol ?? 30;
+    if (hasVol) S.lastVol = vol;
     const muted = e.attr.is_volume_muted || false;
+    const rOn = isReceiverOn();
     const num = document.getElementById('volNum');
     const fill = document.getElementById('volFill');
     const knob = document.getElementById('volKnob');
     const range = document.getElementById('volRange');
     const mb = document.getElementById('vMute');
-    if (num) num.textContent = muted ? 'MUTE' : `${vol}%`;
+    if (num) num.textContent = !rOn ? 'כבוי' : muted ? 'MUTE' : `${vol}%`;
     if (fill) fill.style.width = `${vol}%`;
     if (knob) knob.style.left = `${vol}%`;
-    if (range && !range.matches(':active')) range.value = vol;
+    if (range && !S.volDragging) range.value = vol;
     if (mb) mb.classList.toggle('muted', muted);
 }
 
@@ -564,14 +600,22 @@ function initEvents() {
     document.getElementById('vMute')?.addEventListener('click', toggleMute);
 
     let vt;
-    document.getElementById('volRange')?.addEventListener('input', e => {
-        const v = parseInt(e.target.value);
-        const f = document.getElementById('volFill'), k = document.getElementById('volKnob'), n = document.getElementById('volNum');
-        if (f) f.style.width = `${v}%`;
-        if (k) k.style.left = `${v}%`;
-        if (n) n.textContent = `${v}%`;
-        clearTimeout(vt); vt = setTimeout(() => setVol(v), 300);
-    });
+    const vr = document.getElementById('volRange');
+    if (vr) {
+        vr.addEventListener('input', e => {
+            const v = parseInt(e.target.value);
+            S.lastVol = v;
+            const f = document.getElementById('volFill'), k = document.getElementById('volKnob'), n = document.getElementById('volNum');
+            if (f) f.style.width = `${v}%`;
+            if (k) k.style.left = `${v}%`;
+            if (n) n.textContent = `${v}%`;
+            clearTimeout(vt); vt = setTimeout(() => setVol(v), 300);
+        });
+        vr.addEventListener('mousedown', () => S.volDragging = true);
+        vr.addEventListener('touchstart', () => S.volDragging = true, { passive: true });
+        vr.addEventListener('mouseup', () => { S.volDragging = false; });
+        vr.addEventListener('touchend', () => { S.volDragging = false; }, { passive: true });
+    }
 
     document.getElementById('btnRefresh')?.addEventListener('click', () => { fetchStates(); toast('🔄 מרענן...', 'info'); });
 
