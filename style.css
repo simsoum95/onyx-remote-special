@@ -129,80 +129,49 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 /* ============================================================
-   TAB 1: CINEMA
+   TOP BAR — Power compact + Volume
    ============================================================ */
-.cinema-screen {
-    display: flex; flex-direction: column; align-items: center;
-    padding: 40px 0 24px;
+.top-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0 12px; direction: ltr;
 }
-.power-btn {
-    position: relative; width: 120px; height: 120px;
-    border-radius: 50%; cursor: pointer;
-    background: rgba(255,255,255,0.03);
-    border: 3px solid var(--t3);
-    display: flex; align-items: center; justify-content: center;
-    transition: var(--tr);
+.power-mini {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 24px;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid var(--t3);
+    cursor: pointer; transition: var(--tr); flex-shrink: 0;
 }
-.power-btn.on {
+.power-mini.on {
     border-color: var(--green);
     background: rgba(0,230,118,0.08);
-    box-shadow: 0 0 40px rgba(0,230,118,0.15), 0 0 80px rgba(0,230,118,0.05);
+    box-shadow: 0 0 15px rgba(0,230,118,0.12);
 }
-.power-btn:active { transform: scale(0.92); }
-.power-ring {
-    position: absolute; inset: -8px; border-radius: 50%;
-    border: 1px solid transparent; border-top-color: var(--t3);
-    animation: spin 6s linear infinite; opacity: 0.3;
+.power-mini:active { transform: scale(0.92); }
+.power-mini.loading { opacity: 0.5; pointer-events: none; }
+.power-mini-icon { font-size: 1.2rem; color: var(--t3); transition: var(--tr); }
+.power-mini.on .power-mini-icon { color: var(--green); }
+.power-mini-label {
+    font-size: 0.7rem; font-weight: 700; color: var(--t3);
+    letter-spacing: 1px; transition: var(--tr);
 }
-.power-btn.on .power-ring { border-top-color: var(--green); opacity: 0.5; }
-.power-icon { font-size: 2.5rem; color: var(--t3); transition: var(--tr); }
-.power-btn.on .power-icon { color: var(--green); text-shadow: 0 0 20px var(--grng); }
-.power-btn.loading { opacity: 0.5; pointer-events: none; }
+.power-mini.on .power-mini-label { color: var(--green); }
 
-.power-state {
-    margin-top: 16px; font-size: 0.85rem; font-weight: 700;
-    color: var(--t3); letter-spacing: 2px; transition: var(--tr);
-}
-.power-state.on { color: var(--green); }
-
-.now-playing {
-    margin-top: 6px; font-size: 0.72rem; color: var(--neon);
-    min-height: 20px;
-}
-
-.vol-section {
-    display: flex; align-items: center; gap: 10px;
-    padding: 0 8px; margin: 16px 0; direction: ltr;
-}
-.vol-btn {
-    width: 44px; height: 44px; flex-shrink: 0;
+.vol-compact { display: flex; align-items: center; gap: 6px; flex: 1; }
+.vol-btn-sm {
+    width: 34px; height: 34px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%; background: var(--glass); border: 1px solid var(--gb);
     color: var(--t2); transition: var(--tr);
 }
-.vol-btn svg { width: 18px; height: 18px; }
-.vol-btn:active { transform: scale(0.85); }
+.vol-btn-sm svg { width: 14px; height: 14px; }
+.vol-btn-sm:active { transform: scale(0.85); }
 .vol-mute.muted { color: var(--red); border-color: rgba(255,71,87,0.25); background: var(--rd); }
-.vol-wrap { flex: 1; position: relative; padding: 12px 0; }
+.vol-wrap-sm { flex: 1; position: relative; padding: 10px 0; }
 .vol-bar { position: relative; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; }
 .vol-fill { position: absolute; top:0; left:0; bottom:0; width: 30%; background: linear-gradient(90deg, #0090ff, var(--neon)); border-radius: 2px; box-shadow: 0 0 8px var(--ng); transition: width 0.1s; }
-.vol-knob { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--neon); border: 2px solid var(--bg); box-shadow: 0 0 10px var(--ng); transform: translate(-50%, -50%); left: 30%; transition: left 0.1s; pointer-events: none; }
+.vol-knob { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--neon); border: 2px solid var(--bg); box-shadow: 0 0 10px var(--ng); transform: translate(-50%, -50%); left: 30%; transition: left 0.1s; pointer-events: none; }
 .vol-range { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; -webkit-appearance: none; direction: ltr; z-index: 2; }
-
-.scene-chips {
-    display: flex; gap: 10px; justify-content: center; padding: 0 8px;
-}
-.scene-chip {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
-    padding: 14px 8px; border-radius: 16px;
-    background: var(--glass); border: 1px solid var(--gb);
-    color: var(--t2); font-size: 0.8rem; font-weight: 600;
-    transition: var(--tr);
-}
-.scene-chip:active { transform: scale(0.92); }
-.scene-chip span { font-size: 1.1rem; }
-.scene-off { border-color: rgba(255,71,87,0.2); }
-.scene-off:active { background: var(--rd); }
 
 /* ============================================================
    TAB 2: APPS

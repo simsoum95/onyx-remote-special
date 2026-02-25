@@ -45,34 +45,23 @@
         </div>
 
         <main id="mainContent">
-            <!-- ==================== TAB 1: CINEMA ==================== -->
-            <section class="tab-section" data-tab="cinema">
-                <div class="cinema-screen">
-                    <button class="power-btn" id="btnPower">
-                        <span class="power-ring"></span>
-                        <span class="power-icon">⏻</span>
-                    </button>
-                    <div class="power-state" id="powerState">כבוי</div>
-                    <div class="now-playing" id="nowPlaying"></div>
-                </div>
-                <div class="vol-section">
-                    <button class="vol-btn" id="vDown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg></button>
-                    <div class="vol-wrap">
-                        <div class="vol-bar"><div class="vol-fill" id="volFill"></div><div class="vol-knob" id="volKnob"></div></div>
-                        <input type="range" class="vol-range" id="volRange" min="0" max="100" value="30">
-                    </div>
-                    <button class="vol-btn" id="vUp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
-                    <button class="vol-btn vol-mute" id="vMute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
-                </div>
-                <div class="scene-chips">
-                    <button class="scene-chip" data-scene="film"><span>🎬</span>סרט</button>
-                    <button class="scene-chip" data-scene="sport"><span>⚽</span>ספורט</button>
-                    <button class="scene-chip scene-off" data-scene="cinema_off"><span>⏻</span>כיבוי</button>
-                </div>
-            </section>
-
-            <!-- ==================== TAB 2: APPS ==================== -->
+            <!-- ==================== TAB 1: APPS ==================== -->
             <section class="tab-section" data-tab="apps">
+                <div class="top-bar">
+                    <button class="power-mini" id="btnPower">
+                        <span class="power-mini-icon">⏻</span>
+                        <span class="power-mini-label" id="powerState">כבוי</span>
+                    </button>
+                    <div class="vol-compact">
+                        <button class="vol-btn-sm" id="vDown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg></button>
+                        <div class="vol-wrap-sm">
+                            <div class="vol-bar"><div class="vol-fill" id="volFill"></div><div class="vol-knob" id="volKnob"></div></div>
+                            <input type="range" class="vol-range" id="volRange" min="0" max="100" value="30">
+                        </div>
+                        <button class="vol-btn-sm" id="vUp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+                        <button class="vol-btn-sm vol-mute" id="vMute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                    </div>
+                </div>
                 <button class="ftv-hero" id="btnOpenFreeTV">
                     <span class="ftv-hero-icon">📺</span>
                     <span class="ftv-hero-name">FreeTV</span>
@@ -136,8 +125,7 @@
         </main>
 
         <nav id="mNav">
-            <button class="mn active" data-go="cinema"><span class="mn-i">🎬</span><span>קולנוע</span></button>
-            <button class="mn" data-go="apps"><span class="mn-i">📱</span><span>אפליקציות</span></button>
+            <button class="mn active" data-go="apps"><span class="mn-i">📺</span><span>קולנוע</span></button>
             <button class="mn" data-go="remote"><span class="mn-i">🕹️</span><span>שלט</span></button>
             <button class="mn" data-go="room"><span class="mn-i">🏠</span><span>חדר</span></button>
         </nav>

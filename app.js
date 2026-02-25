@@ -45,7 +45,7 @@ const ALL_IDS = [
     ...CINEMA.speakers.map(s => s.id),
 ];
 
-const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false, tab: 'cinema' };
+const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false, tab: 'apps' };
 
 function lockBusy() {
     S.busy = true; setBusy(true);
@@ -534,9 +534,6 @@ function startPoll() { if (S.poll) clearInterval(S.poll); S.poll = setInterval(f
 function initEvents() {
     document.getElementById('btnPower')?.addEventListener('click', () => runScene(S.cinemaOn ? 'cinema_off' : 'cinema_on'));
 
-    document.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () => {
-        if (b.dataset.scene) runScene(b.dataset.scene);
-    }));
 
     document.getElementById('btnLOn')?.addEventListener('click', () => allLights('turn_on'));
     document.getElementById('btnLOff')?.addEventListener('click', () => allLights('turn_off'));
@@ -587,7 +584,7 @@ function initEvents() {
 async function init() {
     showView('loader');
     initEvents();
-    switchTab('cinema');
+    switchTab('apps');
     const ok = await fetchStates();
     showView('app');
     if (ok) startPoll();
