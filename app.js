@@ -386,8 +386,8 @@ function renderApps() {
         const logoHtml = a.logo
             ? `<img class="app-logo" src="${a.logo}" alt="${a.name}">`
             : `<span class="app-text-logo" style="color:${a.color || '#fff'}">📺</span>`;
-        return `<button class="app-tile ${isActive ? 'active' : ''}" data-idx="${i}">
-            ${logoHtml}<span class="app-n">${a.name}</span>
+        return `<button class="app-tile ${isActive ? 'active' : ''}" data-idx="${i}" title="${a.name}">
+            ${logoHtml}
         </button>`;
     }).join('');
     g.querySelectorAll('.app-tile').forEach(t => {

@@ -1,4 +1,4 @@
-const CACHE = 'onyx-remote-v33';
+const CACHE = 'onyx-remote-v34';
 const ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', e => {
