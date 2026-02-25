@@ -137,22 +137,16 @@ function isProjectorOn() {
    Le Harmony Hub allume le projecteur + receiver + source en un seul appel
    ============================================================ */
 async function startHarmonyActivity(activityName) {
-    toast(`🎬 מפעיל ${activityName}...`, 'info');
-
     await callSvc('remote', 'turn_on', {
         entity_id: HARMONY,
         activity: activityName,
     });
 
-    for (let i = 1; i <= 6; i++) {
-        await sleep(3000);
+    for (let i = 1; i <= 4; i++) {
+        await sleep(2500);
         await fetchStates();
-        const current = getCurrentActivity();
-        if (current === activityName) {
-            toast(`✅ ${activityName} פעיל!`, 'success');
-            return true;
-        }
-        if (i < 6) toast(`⏳ ממתין... (${i}/6)`, 'info');
+        if (getCurrentActivity() === activityName) return true;
+        if (i < 4) toast(`⏳ ממתין... (${i}/4)`, 'info');
     }
 
     toast(`⚠️ ${activityName} — בודק...`, 'error');
@@ -227,47 +221,38 @@ async function smartSource(activityName, label, extra) {
     toast(`🎬 ${label} — מפעיל...`, 'info');
 
     try {
-        await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
-        await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
-        await startHarmonyActivity(activityName);
-        await sleep(6000);
+        await Promise.all([
+            ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
+            callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+        ]);
+
+        const ok = await startHarmonyActivity(activityName);
 
         if (extra?.ps5) {
             toast('🎮 מדליק PS5...', 'info');
             await callSvc('remote', 'send_command', {
                 entity_id: HARMONY, device: HARMONY_DEVICES.ps5, command: 'PowerOn',
             });
-            await sleep(3000);
-            await callSvc('remote', 'send_command', {
-                entity_id: HARMONY, device: HARMONY_DEVICES.ps5, command: 'PowerToggle',
-            });
             await sleep(2000);
         }
 
         if (extra?.inputCmd) {
-            toast('🔄 מחליף כניסה...', 'info');
+            await sleep(1000);
             await callSvc('remote', 'send_command', {
                 entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: extra.inputCmd,
             });
-            await sleep(2000);
         }
 
-        await fetchStates();
+        if (!ok) {
+            await sleep(3000);
+            await fetchStates();
+            if (!isProjectorOn()) {
+                await callSvc('remote', 'send_command', {
+                    entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
+                });
+            }
+        }
 
-        if (!isProjectorOn()) {
-            toast('📽️ מדליק מקרן בנפרד...', 'info');
-            await callSvc('remote', 'send_command', {
-                entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
-            });
-            await sleep(5000);
-        }
-        if (!isReceiverOn()) {
-            toast('🔊 מדליק מגבר בנפרד...', 'info');
-            await callSvc('remote', 'send_command', {
-                entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'PowerOn',
-            });
-            await sleep(4000);
-        }
         await fetchStates();
         toast(`✅ ${label} — מוכן!`, 'success');
     } catch { toast('שגיאה', 'error'); }
