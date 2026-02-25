@@ -1,25 +1,44 @@
 /**
  * ONYX REMOTE SPECIAL — PWA Standalone
- * Proxy Vercel + IR Harmony Hub pour contrôle fiable.
- * Clic source/app = allumage auto complet + lancement.
+ * Contrôle 100% réseau direct — ZERO Harmony Hub / ZERO IR
+ * Pioneer receiver via media_player.receiver (TCP réseau)
+ * Epson projecteur via media_player.epson (ESC/VP.net)
+ * Shield via remote.shield (Android TV Remote Protocol)
  */
 
-const HARMONY = 'remote.daskal';
-const HARMONY_DEVICES = {
-    projector: 'Epson Projector',
-    receiver: 'Pioneer AV Receiver',
-    ps5: 'Sony Game Console',
-    appletv: 'Apple TV',
-    shield: 'SHIELD',
+const RECEIVER = 'media_player.receiver';
+const PROJECTOR = 'media_player.epson';
+const SHIELD = 'remote.shield';
+const SHIELD_MP = 'media_player.shield_2';
+
+const RECEIVER_INPUTS = {
+    shield: 'GAME',
+    bluray: 'BD/DVD',
+    cblsat: 'CBL/SAT',
+    aux: 'AUX',
+    net: 'NET',
+    cd: 'CD',
+    usb: 'USB',
 };
-const HARMONY_ACTIVITIES = {
-    netflix: 'Netflix',
-    freetv: 'FreeTV',
-    appletv: 'Watch Apple TV',
-    ps5: 'PS5',
-    plex: 'Plex',
-    startup: 'Startup Show',
-};
+
+const APPS = [
+    { name: 'Free TV', pkg: 'tv.freetv.androidtv', emoji: '📡', input: 'GAME' },
+    { name: 'Netflix', pkg: 'com.netflix.ninja', emoji: '🎬', input: 'GAME' },
+    { name: 'Plex', pkg: 'com.plexapp.android', emoji: '🎞️', input: 'GAME' },
+    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', emoji: '📺', input: 'GAME' },
+    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', emoji: '▶️', input: 'GAME' },
+    { name: 'Disney+', pkg: 'com.disney.disneyplus', emoji: '🏰', input: 'GAME' },
+];
+
+const TV_CHANNELS = [
+    { num: 1, name: 'TF1' }, { num: 2, name: 'France 2' }, { num: 3, name: 'France 3' },
+    { num: 4, name: 'Canal+' }, { num: 5, name: 'France 5' }, { num: 6, name: 'M6' },
+    { num: 7, name: 'Arte' }, { num: 8, name: 'D8/C8' }, { num: 9, name: 'W9' },
+    { num: 10, name: 'TMC' }, { num: 11, name: 'TFX' }, { num: 12, name: 'NRJ 12' },
+    { num: 13, name: 'LCP' }, { num: 14, name: 'France 4' }, { num: 15, name: 'BFM TV' },
+    { num: 16, name: 'CNews' }, { num: 17, name: 'CStar' }, { num: 18, name: 'Gulli' },
+    { num: 19, name: 'France Info' }, { num: 20, name: 'L\'Équipe' },
+];
 
 const CINEMA = {
     lights: [
@@ -30,53 +49,29 @@ const CINEMA = {
         { id: 'light.8a_cinema_basement_wall_switch', name: 'קיר', emoji: '🏮' },
     ],
     cover: { id: 'cover.cinema_curtains' },
-    receiver: { id: 'media_player.pioneer_vsx_lx303_ed2279' },
-    projector: { id: 'media_player.epson' },
-    players: [
-        { id: 'media_player.shield', name: 'Shield', emoji: '🛡️' },
-        { id: 'media_player.shield_2', name: 'Shield 2', emoji: '🛡️' },
-        { id: 'media_player.qvlnv_byty', name: 'Apple TV', emoji: '🍎' },
-    ],
     speakers: [
         { id: 'media_player.livinig_room', name: 'סלון', emoji: '🔈' },
         { id: 'media_player.balcony', name: 'מרפסת', emoji: '🌙' },
         { id: 'media_player.office', name: 'משרד', emoji: '💼' },
         { id: 'media_player.parents', name: 'הורים', emoji: '🛏️' },
     ],
-    sources: [
-        { name: 'Netflix', activity: 'Netflix', emoji: '🎬' },
-        { name: 'Free TV', activity: 'FreeTV', emoji: '📡' },
-        { name: 'Apple TV', activity: 'Watch Apple TV', emoji: '📺' },
-        { name: 'PS5', activity: 'PS5', emoji: '🎮', extra: { ps5: true } },
-        { name: 'Plex', activity: 'Plex', emoji: '🎞️' },
-        { name: 'Switch', activity: 'Startup Show', emoji: '🕹️', extra: { inputCmd: 'InputGame' } },
-    ],
 };
 
 const ALL_IDS = [
     ...CINEMA.lights.map(l => l.id),
     CINEMA.cover.id,
-    CINEMA.receiver.id,
-    CINEMA.projector.id,
-    ...CINEMA.players.map(p => p.id),
+    RECEIVER, PROJECTOR, SHIELD, SHIELD_MP,
     ...CINEMA.speakers.map(s => s.id),
-    HARMONY,
 ];
 
 const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false };
 
 function lockBusy() {
-    S.busy = true;
-    setBusy(true);
+    S.busy = true; setBusy(true);
     clearTimeout(S.busyTimer);
     S.busyTimer = setTimeout(() => { S.busy = false; setBusy(false); toast('🔓 נעילה שוחררה', 'info'); }, 45000);
 }
-
-function unlockBusy() {
-    S.busy = false;
-    setBusy(false);
-    clearTimeout(S.busyTimer);
-}
+function unlockBusy() { S.busy = false; setBusy(false); clearTimeout(S.busyTimer); }
 
 /* ============================================================
    API
@@ -89,8 +84,7 @@ async function haGet(path) {
 
 async function haPost(path, body) {
     const res = await fetch(`/api/ha?path=${encodeURIComponent(path)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`${res.status}`);
@@ -101,87 +95,113 @@ async function fetchStates() {
     try {
         const all = await haGet('/api/states');
         for (const s of all) {
-            if (ALL_IDS.includes(s.entity_id)) {
+            if (ALL_IDS.includes(s.entity_id))
                 S.entities[s.entity_id] = { state: s.state, attr: s.attributes || {} };
-            }
         }
-        setOnline(true);
-        renderAll();
-        return true;
-    } catch (e) {
-        console.error('[Onyx] fetch error:', e);
-        setOnline(false);
-        return false;
-    }
+        setOnline(true); renderAll(); return true;
+    } catch (e) { console.error('[Onyx]', e); setOnline(false); return false; }
 }
 
 async function callSvc(domain, service, data) {
-    try {
-        await haPost(`/api/services/${domain}/${service}`, data);
-        return true;
-    } catch (e) {
-        console.error('[Onyx] service error:', e);
-        return false;
-    }
+    try { await haPost(`/api/services/${domain}/${service}`, data); return true; }
+    catch (e) { console.error('[Onyx]', e); return false; }
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-function isOn(id) { return ['on','playing','idle','paused'].includes(S.entities[id]?.state); }
+function isOn(id) { return ['on', 'playing', 'idle', 'paused'].includes(S.entities[id]?.state); }
 
-function getCurrentActivity() {
-    return S.entities[HARMONY]?.attr?.current_activity || null;
+function isProjectorOn() { return isOn(PROJECTOR); }
+function isReceiverOn() { return isOn(RECEIVER); }
+
+function getShieldApp() { return S.entities[SHIELD]?.attr?.current_activity || null; }
+
+/* ============================================================
+   CONTRÔLE RÉSEAU DIRECT — Projecteur + Receiver
+   ============================================================ */
+async function projectorOn() {
+    toast('📽️ מדליק מקרן...', 'info');
+    await callSvc('media_player', 'turn_on', { entity_id: PROJECTOR });
+    for (let i = 0; i < 8; i++) {
+        await sleep(3000);
+        await fetchStates();
+        if (isProjectorOn()) { toast('✅ מקרן דלוק!', 'success'); return true; }
+    }
+    toast('⚠️ בדוק מקרן — ייתכן שצריך להפעיל "Standby Mode: Communication On"', 'error');
+    return false;
 }
 
-function isCinemaActive() {
-    const act = getCurrentActivity();
-    return !!act && act !== 'PowerOff';
+async function projectorOff() {
+    await callSvc('media_player', 'turn_off', { entity_id: PROJECTOR });
+    toast('🔴 מקרן כבוי', 'success');
+    setTimeout(fetchStates, 5000);
 }
 
-function isReceiverOn() {
-    return isOn(CINEMA.receiver.id) || isCinemaActive();
+async function receiverOn() {
+    toast('🔊 מדליק מגבר...', 'info');
+    await callSvc('media_player', 'turn_on', { entity_id: RECEIVER });
+    await sleep(3000);
+    await fetchStates();
+    toast(isReceiverOn() ? '✅ מגבר דלוק!' : '⚠️ בדוק מגבר', isReceiverOn() ? 'success' : 'error');
+    return isReceiverOn();
 }
 
-function isProjectorOn() {
-    return isOn(CINEMA.projector.id) || isCinemaActive();
+async function receiverOff() {
+    await callSvc('media_player', 'turn_off', { entity_id: RECEIVER });
+    toast('🔴 מגבר כבוי', 'success');
+    setTimeout(fetchStates, 3000);
+}
+
+async function receiverSetInput(source) {
+    await callSvc('media_player', 'select_source', { entity_id: RECEIVER, source });
+}
+
+async function launchApp(pkg) {
+    await callSvc('remote', 'turn_on', { entity_id: SHIELD, activity: pkg });
 }
 
 /* ============================================================
-   HARMONY — Lancer une activité (allume TOUT automatiquement)
-   Le Harmony Hub allume le projecteur + receiver + source en un seul appel
+   SMART SOURCE — allume tout + lance l'app
    ============================================================ */
-async function startHarmonyActivity(activityName) {
-    await callSvc('remote', 'turn_on', {
-        entity_id: HARMONY,
-        activity: activityName,
-    });
+async function smartSource(app) {
+    if (S.busy) return;
+    lockBusy();
+    toast(`🎬 ${app.name} — מפעיל...`, 'info');
 
-    for (let i = 1; i <= 4; i++) {
-        await sleep(2500);
+    try {
+        await Promise.all([
+            ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
+            callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+        ]);
+
+        const tasks = [];
+        if (!isProjectorOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
+        if (!isReceiverOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
+        if (tasks.length) { await Promise.all(tasks); await sleep(4000); }
+
+        if (app.input) await receiverSetInput(app.input);
+        await launchApp(app.pkg);
+        await sleep(2000);
         await fetchStates();
-        if (getCurrentActivity() === activityName) return true;
-        if (i < 4) toast(`⏳ ממתין... (${i}/4)`, 'info');
-    }
+        toast(`✅ ${app.name} — מוכן!`, 'success');
+    } catch { toast('שגיאה', 'error'); }
 
-    toast(`⚠️ ${activityName} — בודק...`, 'error');
-    return false;
+    unlockBusy();
 }
 
-async function stopHarmony() {
-    toast('🔴 מכבה הכל...', 'info');
-    await callSvc('remote', 'turn_off', { entity_id: HARMONY });
-
-    for (let i = 1; i <= 4; i++) {
-        await sleep(3000);
-        await fetchStates();
-        const current = getCurrentActivity();
-        if (!current || current === 'PowerOff') {
-            toast('🔴 הקולנוע כבוי', 'success');
-            return true;
-        }
+/* ============================================================
+   CHAÎNES TV
+   ============================================================ */
+async function goToChannel(num) {
+    const digits = String(num).split('');
+    for (const d of digits) {
+        await callSvc('remote', 'send_command', { entity_id: SHIELD, command: `KEYCODE_${d}` });
+        await sleep(200);
     }
+    toast(`📺 ערוץ ${num}`, 'success');
+}
 
-    toast('⚠️ בדוק אם הכל כבוי', 'error');
-    return false;
+async function sendChannelDigit(d) {
+    await callSvc('remote', 'send_command', { entity_id: SHIELD, command: `KEYCODE_${d}` });
 }
 
 /* ============================================================
@@ -193,13 +213,27 @@ async function runScene(name) {
 
     try {
         if (name === 'cinema_on') {
-            await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
-            await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
-            await startHarmonyActivity('Startup Show');
-        } else if (name === 'cinema_off') {
-            await stopHarmony();
-            await callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
+            toast('🎬 מפעיל קולנוע...', 'info');
+            await Promise.all([
+                ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
+                callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+                callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }),
+                callSvc('media_player', 'turn_on', { entity_id: RECEIVER }),
+            ]);
+            await sleep(4000);
+            await receiverSetInput('GAME');
             await fetchStates();
+            toast('✅ קולנוע מוכן!', 'success');
+        } else if (name === 'cinema_off') {
+            toast('🔴 מכבה הכל...', 'info');
+            await Promise.all([
+                callSvc('media_player', 'turn_off', { entity_id: PROJECTOR }),
+                callSvc('media_player', 'turn_off', { entity_id: RECEIVER }),
+                callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
+            ]);
+            await sleep(3000);
+            await fetchStates();
+            toast('🔴 הקולנוע כבוי', 'success');
         } else if (name === 'ambient') {
             toast('✨ מצב אווירה...', 'info');
             await Promise.all([
@@ -223,59 +257,6 @@ async function runScene(name) {
 }
 
 /* ============================================================
-   SOURCE = Harmony Activity (allume TOUT + bascule la source)
-   ============================================================ */
-async function smartSource(activityName, label, extra) {
-    if (S.busy) return;
-    lockBusy();
-    toast(`🎬 ${label} — מפעיל...`, 'info');
-
-    try {
-        await Promise.all([
-            ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
-            callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
-        ]);
-
-        const alreadyActive = getCurrentActivity() === activityName;
-
-        if (alreadyActive) {
-            toast(`🔄 ${label} — relance...`, 'info');
-            await callSvc('remote', 'turn_on', { entity_id: HARMONY, activity: activityName });
-            await sleep(3000);
-        } else {
-            await startHarmonyActivity(activityName);
-        }
-
-        if (extra?.ps5) {
-            toast('🎮 מדליק PS5...', 'info');
-            await callSvc('remote', 'send_command', {
-                entity_id: HARMONY, device: HARMONY_DEVICES.ps5, command: 'PowerOn',
-            });
-            await sleep(2000);
-        }
-
-        if (extra?.inputCmd) {
-            await sleep(1000);
-            await callSvc('remote', 'send_command', {
-                entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: extra.inputCmd,
-            });
-        }
-
-        if (!alreadyActive && !isProjectorOn()) {
-            await sleep(3000);
-            await callSvc('remote', 'send_command', {
-                entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
-            });
-        }
-
-        await fetchStates();
-        toast(`✅ ${label} — מוכן!`, 'success');
-    } catch { toast('שגיאה', 'error'); }
-
-    unlockBusy();
-}
-
-/* ============================================================
    ACTIONS
    ============================================================ */
 async function toggleLight(id) {
@@ -291,111 +272,58 @@ async function coverAction(a) {
 }
 
 async function devOn(id) {
-    if (id === CINEMA.projector.id) {
-        toast('📽️ מדליק מקרן...', 'info');
-        await callSvc('remote', 'send_command', {
-            entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
-        });
-        await sleep(5000);
-        await fetchStates();
-        toast(isOn(id) ? '✅ מקרן דלוק!' : '⚠️ בדוק מקרן', isOn(id) ? 'success' : 'error');
-        return;
-    }
-    if (id === CINEMA.receiver.id) {
-        toast('🔊 מדליק מגבר...', 'info');
-        await callSvc('remote', 'send_command', {
-            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'PowerOn',
-        });
-        await sleep(4000);
-        await fetchStates();
-        toast(isOn(id) ? '✅ מגבר דלוק!' : '⚠️ בדוק מגבר', isOn(id) ? 'success' : 'error');
-        return;
-    }
+    if (id === PROJECTOR) return projectorOn();
+    if (id === RECEIVER) return receiverOn();
     await callSvc('media_player', 'turn_on', { entity_id: id });
     toast('⚡ הופעל', 'success');
     setTimeout(fetchStates, 3000);
 }
 
 async function devOff(id) {
-    if (id === CINEMA.projector.id) {
-        await callSvc('remote', 'send_command', {
-            entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOff',
-        });
-    } else if (id === CINEMA.receiver.id) {
-        await callSvc('remote', 'send_command', {
-            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'PowerOff',
-        });
-    } else {
-        await callSvc('media_player', 'turn_off', { entity_id: id });
-    }
+    if (id === PROJECTOR) return projectorOff();
+    if (id === RECEIVER) return receiverOff();
+    await callSvc('media_player', 'turn_off', { entity_id: id });
     toast('🔴 כובה', 'success');
-    setTimeout(fetchStates, 4000);
+    setTimeout(fetchStates, 3000);
 }
 
 async function toggleDev(id) {
-    try {
-        isOn(id) ? await devOff(id) : await devOn(id);
-    } catch { toast('⚠️ שגיאה בהפעלה', 'error'); }
+    try { isOn(id) ? await devOff(id) : await devOn(id); }
+    catch { toast('⚠️ שגיאה', 'error'); }
 }
 
 async function volStep(dir) {
-    const cmd = dir === 'up' ? 'VolumeUp' : 'VolumeDown';
-    if (isOn(CINEMA.receiver.id)) {
-        await callSvc('media_player', dir === 'up' ? 'volume_up' : 'volume_down', { entity_id: CINEMA.receiver.id });
-    } else {
-        await callSvc('remote', 'send_command', {
-            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: cmd,
-        });
-    }
-    S.lastVol = Math.max(0, Math.min(100, (S.lastVol || 30) + (dir === 'up' ? 3 : -3)));
+    const svc = dir === 'up' ? 'volume_up' : 'volume_down';
+    await callSvc('media_player', svc, { entity_id: RECEIVER });
+    S.lastVol = Math.max(0, Math.min(100, (S.lastVol || 30) + (dir === 'up' ? 2 : -2)));
     renderAudio();
-    setTimeout(fetchStates, 1500);
+    setTimeout(fetchStates, 1000);
 }
 
 async function setVol(v) {
     S.lastVol = v;
-    if (isOn(CINEMA.receiver.id)) {
-        await callSvc('media_player', 'volume_set', { entity_id: CINEMA.receiver.id, volume_level: v / 100 });
-    }
+    await callSvc('media_player', 'volume_set', { entity_id: RECEIVER, volume_level: v / 100 });
 }
 
 async function toggleMute() {
-    if (isOn(CINEMA.receiver.id)) {
-        const m = S.entities[CINEMA.receiver.id]?.attr?.is_volume_muted || false;
-        await callSvc('media_player', 'volume_mute', { entity_id: CINEMA.receiver.id, is_volume_muted: !m });
-    } else {
-        await callSvc('remote', 'send_command', {
-            entity_id: HARMONY, device: HARMONY_DEVICES.receiver, command: 'Mute',
-        });
-    }
+    const m = S.entities[RECEIVER]?.attr?.is_volume_muted || false;
+    await callSvc('media_player', 'volume_mute', { entity_id: RECEIVER, is_volume_muted: !m });
     setTimeout(fetchStates, 800);
 }
 
 async function sendRemoteCmd(cmd) {
-    try {
-        await callSvc('remote', 'send_command', {
-            entity_id: 'remote.shield',
-            command: cmd,
-        });
-    } catch {
-        toast('⚠️ שגיאה בשליחה', 'error');
-    }
+    try { await callSvc('remote', 'send_command', { entity_id: SHIELD, command: cmd }); }
+    catch { toast('⚠️ שגיאה', 'error'); }
 }
 
 async function sendText(text) {
     if (!text) return;
     try {
-        await callSvc('androidtv', 'adb_command', {
-            entity_id: 'media_player.shield_2',
-            command: `input text "${text}"`,
-        });
+        await callSvc('androidtv', 'adb_command', { entity_id: SHIELD_MP, command: `input text "${text}"` });
         toast(`⌨️ "${text}" נשלח`, 'success');
     } catch {
         for (const ch of text) {
-            await callSvc('remote', 'send_command', {
-                entity_id: 'remote.shield',
-                command: ch,
-            });
+            await callSvc('remote', 'send_command', { entity_id: SHIELD, command: ch });
             await sleep(150);
         }
         toast(`⌨️ "${text}" נשלח`, 'success');
@@ -412,80 +340,67 @@ async function allLights(svc) {
    RENDER
    ============================================================ */
 function renderAll() {
-    renderStatusBar();
-    renderProjectorStatus();
-    renderLights();
-    renderCurtain();
-    renderSources();
-    renderAudio();
-    renderDevices();
-    renderSpeakers();
-    updateHero();
+    renderStatusBar(); renderProjectorStatus(); renderLights();
+    renderCurtain(); renderSources(); renderAudio();
+    renderChannels(); renderSpeakers(); updateHero();
 }
 
 function renderStatusBar() {
-    const pOn = isProjectorOn();
-    const rOn = isReceiverOn();
-    const activity = getCurrentActivity();
+    const pOn = isProjectorOn(), rOn = isReceiverOn();
     const cState = S.entities[CINEMA.cover.id]?.state || 'unknown';
     const lightsOn = CINEMA.lights.filter(l => S.entities[l.id]?.state === 'on').length;
-    const lightsTotal = CINEMA.lights.length;
 
     setStatItem('statProjector', pOn, pOn ? 'דלוק' : 'כבוי');
     setStatItem('statReceiver', rOn, rOn ? 'דלוק' : 'כבוי');
-    const cLabels = { open:'פתוח', closed:'סגור', opening:'נפתח', closing:'נסגר' };
+    const cLabels = { open: 'פתוח', closed: 'סגור', opening: 'נפתח', closing: 'נסגר' };
     setStatItem('statCurtain', cState === 'open', cLabels[cState] || cState);
-    setStatItem('statLights', lightsOn > 0, `${lightsOn}/${lightsTotal}`);
+    setStatItem('statLights', lightsOn > 0, `${lightsOn}/${CINEMA.lights.length}`);
 
     const actEl = document.getElementById('currentActivity');
-    if (actEl) actEl.textContent = activity && activity !== 'PowerOff' ? activity : '—';
+    const app = getShieldApp();
+    const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '—';
+    if (actEl) actEl.textContent = appLabel;
 
     const countEl = document.getElementById('lightsCount');
     if (countEl) countEl.textContent = lightsOn > 0 ? `(${lightsOn} דלוקות)` : '';
 }
 
 function setStatItem(elId, on, text) {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    el.classList.toggle('on', on);
-    el.classList.toggle('off', !on);
+    const el = document.getElementById(elId); if (!el) return;
+    el.classList.toggle('on', on); el.classList.toggle('off', !on);
     const val = el.querySelector('.stat-val');
     if (val) val.textContent = text;
 }
 
 function renderProjectorStatus() {
-    const pOn = isProjectorOn();
-    const rOn = isReceiverOn();
-    const activity = getCurrentActivity();
-    const el = document.getElementById('projectorPanel');
-    if (!el) return;
+    const pOn = isProjectorOn(), rOn = isReceiverOn();
+    const rSrc = S.entities[RECEIVER]?.attr?.source || '—';
+    const app = getShieldApp();
+    const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '';
+    const el = document.getElementById('projectorPanel'); if (!el) return;
 
     el.innerHTML = `
         <div class="proj-row">
             <div class="proj-device ${pOn ? 'on' : 'off'}">
-                <span class="proj-dot"></span>
-                <span class="proj-icon">📽️</span>
-                <span class="proj-name">מקרן</span>
-                <span class="proj-state">${pOn ? 'דלוק' : 'כבוי'}</span>
+                <span class="proj-dot"></span><span class="proj-icon">📽️</span>
+                <span class="proj-name">מקרן</span><span class="proj-state">${pOn ? 'דלוק' : 'כבוי'}</span>
             </div>
             <div class="proj-btns">
-                <button class="pbtn pbtn-on" data-id="${CINEMA.projector.id}" data-act="on">הפעלה</button>
-                <button class="pbtn pbtn-off" data-id="${CINEMA.projector.id}" data-act="off">כיבוי</button>
+                <button class="pbtn pbtn-on" data-id="${PROJECTOR}" data-act="on">הפעלה</button>
+                <button class="pbtn pbtn-off" data-id="${PROJECTOR}" data-act="off">כיבוי</button>
             </div>
         </div>
         <div class="proj-row">
             <div class="proj-device ${rOn ? 'on' : 'off'}">
-                <span class="proj-dot"></span>
-                <span class="proj-icon">🔊</span>
-                <span class="proj-name">מגבר</span>
-                <span class="proj-state">${rOn ? 'דלוק' : 'כבוי'}</span>
+                <span class="proj-dot"></span><span class="proj-icon">🔊</span>
+                <span class="proj-name">מגבר</span><span class="proj-state">${rOn ? `דלוק — ${rSrc}` : 'כבוי'}</span>
             </div>
             <div class="proj-btns">
-                <button class="pbtn pbtn-on" data-id="${CINEMA.receiver.id}" data-act="on">הפעלה</button>
-                <button class="pbtn pbtn-off" data-id="${CINEMA.receiver.id}" data-act="off">כיבוי</button>
+                <button class="pbtn pbtn-on" data-id="${RECEIVER}" data-act="on">הפעלה</button>
+                <button class="pbtn pbtn-off" data-id="${RECEIVER}" data-act="off">כיבוי</button>
             </div>
         </div>
-        ${activity && activity !== 'PowerOff' ? `<div class="proj-activity">🎯 פעילות: <strong>${activity}</strong></div>` : ''}`;
+        ${appLabel ? `<div class="proj-activity">🎯 אפליקציה: <strong>${appLabel}</strong></div>` : ''}`;
 
     el.querySelectorAll('.pbtn').forEach(b => {
         b.addEventListener('click', e => {
@@ -508,31 +423,36 @@ function renderCurtain() {
     const st = S.entities[CINEMA.cover.id]?.state || 'unknown';
     const b = document.getElementById('curtainBadge');
     const v = document.getElementById('curVis');
-    const lab = { open:'פתוח', closed:'סגור', opening:'נפתח...', closing:'נסגר...' };
+    const lab = { open: 'פתוח', closed: 'סגור', opening: 'נפתח...', closing: 'נסגר...' };
     if (b) { b.textContent = lab[st] || st; b.className = 'badge ' + st; }
-    if (v) { v.classList.remove('open','closed'); v.classList.add(st === 'open' || st === 'opening' ? 'open' : 'closed'); }
+    if (v) { v.classList.remove('open', 'closed'); v.classList.add(st === 'open' || st === 'opening' ? 'open' : 'closed'); }
 }
 
 function renderSources() {
     const g = document.getElementById('sourcesGrid'); if (!g) return;
-    const activity = getCurrentActivity();
-    const isActive = !!activity && activity !== 'PowerOff';
+    const currentApp = getShieldApp();
+    const anyOn = isProjectorOn() || isReceiverOn();
 
-    g.innerHTML = CINEMA.sources.map((s, i) =>
-        `<div class="src ${activity === s.activity ? 'active' : ''}" data-idx="${i}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`
-    ).join('') + (isActive ? `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>` : '');
+    g.innerHTML = APPS.map((a, i) =>
+        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-idx="${i}"><div class="src-e">${a.emoji}</div><div class="src-n">${a.name}</div></div>`
+    ).join('') + (anyOn ? `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>` : '');
 
     g.querySelectorAll('.src:not(.src-off)').forEach(t => {
-        t.addEventListener('click', () => {
-            const src = CINEMA.sources[parseInt(t.dataset.idx)];
-            smartSource(src.activity, src.name, src.extra);
-        });
+        t.addEventListener('click', () => smartSource(APPS[parseInt(t.dataset.idx)]));
     });
     document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
 }
 
+function renderChannels() {
+    const g = document.getElementById('channelsGrid'); if (!g) return;
+    g.innerHTML = TV_CHANNELS.map(c =>
+        `<div class="ch-tile" data-ch="${c.num}"><span class="ch-num">${c.num}</span><span class="ch-name">${c.name}</span></div>`
+    ).join('');
+    g.querySelectorAll('.ch-tile').forEach(t => t.addEventListener('click', () => goToChannel(parseInt(t.dataset.ch))));
+}
+
 function renderAudio() {
-    const e = S.entities[CINEMA.receiver.id]; if (!e) return;
+    const e = S.entities[RECEIVER]; if (!e) return;
     const hasVol = e.attr.volume_level !== undefined;
     const vol = hasVol ? Math.round(e.attr.volume_level * 100) : S.lastVol ?? 30;
     if (hasVol) S.lastVol = vol;
@@ -550,35 +470,24 @@ function renderAudio() {
     if (mb) mb.classList.toggle('muted', muted);
 }
 
-function renderDevices() {
-    const g = document.getElementById('devicesGrid'); if (!g) return;
-    g.innerHTML = CINEMA.players.map(d => {
-        const st = S.entities[d.id]?.state || 'unavailable';
-        const on = isOn(d.id);
-        return `<div class="dev ${on ? 'on' : 'off'}" data-id="${d.id}"><div class="dev-e">${d.emoji}</div><div class="dev-n">${d.name}</div><div class="dev-s">${on ? 'דלוק' : st === 'unavailable' ? '—' : 'כבוי'}</div></div>`;
-    }).join('');
-    g.querySelectorAll('.dev').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
-}
-
 function renderSpeakers() {
     const g = document.getElementById('speakersGrid'); if (!g) return;
     g.innerHTML = CINEMA.speakers.map(s => {
         const e = S.entities[s.id];
         const st = e?.state || 'unavailable';
-        const on = ['playing','paused','idle'].includes(st);
+        const on = ['playing', 'paused', 'idle'].includes(st);
         const title = e?.attr?.media_title || '';
         return `<div class="spk ${on ? 'on' : ''}" data-id="${s.id}">
-            <div class="spk-e">${s.emoji}</div>
-            <div class="spk-n">${s.name}</div>
-            <div class="spk-s">${on ? (title || 'פעיל') : 'כבוי'}</div>
-        </div>`;
+            <div class="spk-e">${s.emoji}</div><div class="spk-n">${s.name}</div>
+            <div class="spk-s">${on ? (title || 'פעיל') : 'כבוי'}</div></div>`;
     }).join('');
     g.querySelectorAll('.spk').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
 }
 
 function updateHero() {
-    const activity = getCurrentActivity();
-    S.cinemaOn = !!activity && activity !== 'PowerOff';
+    const app = getShieldApp();
+    S.cinemaOn = isProjectorOn() || isReceiverOn();
+    const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : null;
 
     const orb = document.getElementById('heroOrbit');
     const sub = document.getElementById('heroSub');
@@ -586,7 +495,7 @@ function updateHero() {
     const lab = document.getElementById('powerLabel');
     if (orb) orb.classList.toggle('on', S.cinemaOn);
     if (sub) {
-        sub.textContent = S.cinemaOn ? `🟢 ${activity}` : '⚫ קולנוע כבוי';
+        sub.textContent = S.cinemaOn ? `🟢 ${appLabel || 'קולנוע פעיל'}` : '⚫ קולנוע כבוי';
         sub.classList.toggle('on', S.cinemaOn);
     }
     if (btn) btn.classList.toggle('on', S.cinemaOn);
@@ -665,21 +574,28 @@ function initEvents() {
         setTimeout(() => { b.style.transform = ''; b.style.boxShadow = ''; }, 200);
         sendRemoteCmd(b.dataset.cmd);
     }));
+
     document.getElementById('kbToggle')?.addEventListener('click', () => document.getElementById('kbPanel')?.classList.toggle('hidden'));
     document.getElementById('kbSend')?.addEventListener('click', () => {
         const inp = document.getElementById('kbInput');
         if (inp?.value) { sendText(inp.value); inp.value = ''; }
     });
     document.getElementById('kbInput')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { const inp = e.target; sendText(inp.value); inp.value = ''; }
+        if (e.key === 'Enter') { sendText(e.target.value); e.target.value = ''; }
     });
+
+    document.querySelectorAll('.numpad-btn').forEach(b => b.addEventListener('click', () => {
+        b.style.transform = 'scale(0.85)';
+        setTimeout(() => { b.style.transform = ''; }, 150);
+        sendChannelDigit(b.dataset.digit);
+    }));
 
     document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.mn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
-        const map = { hero:'pcHero', lights:'lightsGrid', sources:'sourcesGrid', remote:'remoteCard', audio:'volNum' };
+        const map = { hero: 'pcHero', lights: 'lightsGrid', sources: 'sourcesGrid', channels: 'channelsSection', remote: 'remoteCard', audio: 'volNum' };
         const t = map[b.dataset.go];
-        if (t) document.getElementById(t)?.closest('.glass-card')?.scrollIntoView({ behavior:'smooth', block:'start' });
+        if (t) document.getElementById(t)?.closest('.glass-card, section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }));
 
     document.addEventListener('visibilitychange', () => {
@@ -696,12 +612,8 @@ async function init() {
     initEvents();
     const ok = await fetchStates();
     showView('app');
-    if (ok) {
-        startPoll();
-    } else {
-        toast('⚠️ שגיאת חיבור — בודק שוב...', 'error');
-        setTimeout(async () => { await fetchStates(); startPoll(); }, 3000);
-    }
+    if (ok) { startPoll(); }
+    else { toast('⚠️ שגיאת חיבור — בודק שוב...', 'error'); setTimeout(async () => { await fetchStates(); startPoll(); }, 3000); }
 }
 
 document.addEventListener('DOMContentLoaded', init);

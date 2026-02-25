@@ -680,6 +680,66 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 }
 
 /* ============================================================
+   NUMPAD + CHAÎNES
+   ============================================================ */
+.numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 280px;
+    margin: 0 auto 16px;
+}
+.numpad-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 700;
+    padding: 14px;
+    cursor: pointer;
+    transition: all .15s;
+    text-align: center;
+}
+.numpad-btn:hover { background: rgba(0,255,200,0.12); border-color: rgba(0,255,200,0.4); }
+.numpad-btn:active { transform: scale(0.9); background: rgba(0,255,200,0.25); }
+.numpad-back { background: rgba(255,100,100,0.1); border-color: rgba(255,100,100,0.2); color: #f88; }
+.numpad-ok { background: rgba(0,255,200,0.1); border-color: rgba(0,255,200,0.3); color: var(--accent); }
+
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+}
+.ch-tile {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .15s;
+}
+.ch-tile:hover { background: rgba(0,255,200,0.1); border-color: rgba(0,255,200,0.3); }
+.ch-tile:active { transform: scale(0.92); }
+.ch-num {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 2px;
+}
+.ch-name {
+    display: block;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================================
    MOBILE (≤480px) — Mini télécommande
    ============================================================ */
 @media (max-width: 480px) {
@@ -707,6 +767,9 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
     .lt-n { font-size: 0.6rem; }
     .sources-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
     .src { padding: 14px 8px; }
+    .channels-grid { grid-template-columns: repeat(3, 1fr); }
+    .numpad { max-width: 240px; }
+    .numpad-btn { padding: 12px; font-size: 1.1rem; }
     .devices-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
     .dev-main { grid-column: span 2; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 10px; }
     .apps-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }

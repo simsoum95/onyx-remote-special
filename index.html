@@ -126,10 +126,29 @@
                     </div>
                     <div class="lights-grid" id="lightsGrid"></div>
                 </div>
-                <!-- Sources — Activités Harmony -->
+                <!-- Sources — Apps Shield directes -->
                 <div class="glass-card">
-                    <div class="card-hdr"><span class="card-ico">🎯</span><span>מקורות</span><span class="activity-badge" id="currentActivity">—</span></div>
+                    <div class="card-hdr"><span class="card-ico">🎯</span><span>אפליקציות</span><span class="activity-badge" id="currentActivity">—</span></div>
                     <div class="sources-grid" id="sourcesGrid"></div>
+                </div>
+                <!-- Chaînes TV -->
+                <div class="glass-card" id="channelsSection">
+                    <div class="card-hdr"><span class="card-ico">📺</span><span>ערוצים</span></div>
+                    <div class="numpad">
+                        <button class="numpad-btn" data-digit="1">1</button>
+                        <button class="numpad-btn" data-digit="2">2</button>
+                        <button class="numpad-btn" data-digit="3">3</button>
+                        <button class="numpad-btn" data-digit="4">4</button>
+                        <button class="numpad-btn" data-digit="5">5</button>
+                        <button class="numpad-btn" data-digit="6">6</button>
+                        <button class="numpad-btn" data-digit="7">7</button>
+                        <button class="numpad-btn" data-digit="8">8</button>
+                        <button class="numpad-btn" data-digit="9">9</button>
+                        <button class="numpad-btn numpad-back" data-cmd="BACK">↩</button>
+                        <button class="numpad-btn" data-digit="0">0</button>
+                        <button class="numpad-btn numpad-ok" data-cmd="DPAD_CENTER">OK</button>
+                    </div>
+                    <div class="channels-grid" id="channelsGrid"></div>
                 </div>
                 <!-- Audio -->
                 <div class="glass-card">
@@ -195,8 +214,8 @@
         <!-- Mobile nav -->
         <nav id="mNav">
             <button class="mn active" data-go="hero"><span class="mn-i">🎬</span><span>קולנוע</span></button>
-            <button class="mn" data-go="lights"><span class="mn-i">💡</span><span>תאורה</span></button>
-            <button class="mn" data-go="sources"><span class="mn-i">📡</span><span>מקורות</span></button>
+            <button class="mn" data-go="sources"><span class="mn-i">📡</span><span>אפליקציות</span></button>
+            <button class="mn" data-go="channels"><span class="mn-i">📺</span><span>ערוצים</span></button>
             <button class="mn" data-go="remote"><span class="mn-i">🕹️</span><span>שלט</span></button>
             <button class="mn" data-go="audio"><span class="mn-i">🔊</span><span>שמע</span></button>
         </nav>
