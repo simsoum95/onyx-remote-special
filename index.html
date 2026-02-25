@@ -167,12 +167,26 @@
                     <div class="card-hdr"><span class="card-ico">🎯</span><span>אפליקציות</span><span class="activity-badge" id="currentActivity">—</span></div>
                     <div class="sources-grid" id="sourcesGrid"></div>
                 </div>
-                <!-- FreeTV — 65+ chaînes -->
+                <!-- FreeTV -->
                 <div class="glass-card" id="freetvSection">
-                    <div class="card-hdr"><span class="card-ico">📡</span><span>FreeTV — 65+ ערוצים</span></div>
-                    <p class="ch-desc">לחץ על ערוץ → הכל נדלק אוטומטי + FreeTV נפתח</p>
-                    <div class="freetv-grid" id="freetvGrid"></div>
-                    <div class="card-hdr" style="margin-top:16px"><span class="card-ico">🔢</span><span>מספר ערוץ ידני</span></div>
+                    <div class="card-hdr"><span class="card-ico">📡</span><span>FreeTV</span></div>
+                    <button class="ftv-open-btn" id="btnOpenFreeTV">
+                        <span class="ftv-open-icon">📺</span>
+                        <span class="ftv-open-text">פתח FreeTV</span>
+                        <span class="ftv-open-sub">הכל נדלק אוטומטי</span>
+                    </button>
+                    <div class="ftv-nav">
+                        <button class="ftv-ch-btn" id="btnChUp">
+                            <span class="ftv-ch-arrow">▲</span>
+                            <span>CH+</span>
+                        </button>
+                        <div class="ftv-ch-label">ערוץ</div>
+                        <button class="ftv-ch-btn" id="btnChDown">
+                            <span class="ftv-ch-arrow">▼</span>
+                            <span>CH-</span>
+                        </button>
+                    </div>
+                    <div class="card-hdr" style="margin-top:16px"><span class="card-ico">🔢</span><span>מקשי מספר</span></div>
                     <div class="numpad">
                         <button class="numpad-btn" data-digit="1">1</button>
                         <button class="numpad-btn" data-digit="2">2</button>

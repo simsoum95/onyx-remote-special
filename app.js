@@ -33,109 +33,6 @@ const CONSOLES = [
     { name: 'PlayStation 5', input: 'GAME', icon: '🎮' },
 ];
 
-const FREETV_CHANNELS = {
-    broadcast: {
-        title: '📺 ברודקאסט',
-        channels: [
-            { name: 'כאן 11', icon: '🟢' },
-            { name: 'קשת 12', icon: '🔷' },
-            { name: 'רשת 13', icon: '🔵' },
-            { name: 'עכשיו 14', icon: '🟠' },
-            { name: '10STARS', icon: '⭐' },
-            { name: 'i24 News', icon: '🌍' },
-            { name: 'ערוץ 24', icon: '📰' },
-            { name: 'ערוץ 9', icon: '9️⃣' },
-            { name: 'כנסת', icon: '🏛️' },
-            { name: 'מכאן 33', icon: '3️⃣' },
-        ]
-    },
-    sport: {
-        title: '⚽ ספורט',
-        channels: [
-            { name: 'Sport 5', icon: '⚽' },
-            { name: 'Sport 5+', icon: '🏀' },
-            { name: 'Sport 5 Gold', icon: '🥇' },
-            { name: 'Sport 5 Live', icon: '🔴' },
-            { name: 'Sport 5 Stars', icon: '⭐' },
-            { name: 'Sport 5 MAX', icon: '💪' },
-            { name: 'Sport 5 4K', icon: '📺' },
-            { name: 'ONE', icon: '1️⃣' },
-            { name: 'ONE 2', icon: '2️⃣' },
-            { name: 'ONE DOCO', icon: '🎬' },
-            { name: 'EDGE', icon: '🏋️' },
-        ]
-    },
-    movies: {
-        title: '🎬 סרטים',
-        channels: [
-            { name: 'Movies Action', icon: '💥' },
-            { name: 'Movies Comedy', icon: '😂' },
-            { name: 'Movies Drama', icon: '🎭' },
-            { name: 'Movies Romantic', icon: '💕' },
-            { name: 'Movies Horror', icon: '👻' },
-            { name: 'Movies Thriller', icon: '🔪' },
-            { name: 'Movies Family', icon: '👨‍👩‍👧‍👦' },
-            { name: 'Movies Feel Good', icon: '😊' },
-            { name: 'Movies ישראלי', icon: '🇮🇱' },
-            { name: '10 Stars', icon: '🌟' },
-        ]
-    },
-    series: {
-        title: '📺 סדרות ובידור',
-        channels: [
-            { name: 'Series Global', icon: '🌐' },
-            { name: 'FreeTV דרמה', icon: '🎭' },
-            { name: 'FreeTV קומדיה', icon: '😄' },
-            { name: 'ויוה טלנובלות', icon: '💃' },
-            { name: 'ויוה איסטנבול', icon: '🇹🇷' },
-            { name: 'ואמוס', icon: '🇪🇸' },
-            { name: 'חתונה ממבט ראשון', icon: '💒' },
-            { name: 'נינג\'ה ישראל', icon: '🥷' },
-            { name: 'ארץ נהדרת', icon: '😆' },
-            { name: 'סברי מרנן', icon: '🍽️' },
-            { name: 'הכוכב הבא', icon: '🎤' },
-        ]
-    },
-    lifestyle: {
-        title: '🎨 לייף סטייל',
-        channels: [
-            { name: 'FreeTV לייף סטייל', icon: '✨' },
-            { name: 'FreeTV אוכל', icon: '🍳' },
-            { name: 'Foody', icon: '🍕' },
-            { name: 'Beautyz', icon: '💄' },
-            { name: 'FreeTV דוקו', icon: '🎥' },
-            { name: 'ערוץ דוק', icon: '📚' },
-            { name: 'מוזיקה IL', icon: '🎵' },
-            { name: 'ערוץ הקריוקי', icon: '🎤' },
-        ]
-    },
-    kids: {
-        title: '🧒 ילדים',
-        channels: [
-            { name: 'ערוץ הילדים', icon: '👦' },
-            { name: 'FOMO', icon: '📱' },
-            { name: 'בייבי', icon: '👶' },
-            { name: 'שירי ילדותי', icon: '🎵' },
-            { name: 'יויו', icon: '🪀' },
-            { name: 'פלא', icon: '✨' },
-            { name: 'A+', icon: '📝' },
-            { name: 'ערוץ הכוכבים', icon: '⭐' },
-            { name: 'ילדותי', icon: '🧸' },
-            { name: 'לוגי', icon: '🧩' },
-            { name: 'כאן חינוכית', icon: '📖' },
-            { name: 'ג\'וניור', icon: '🎮' },
-        ]
-    },
-    international: {
-        title: '🌍 בינלאומי',
-        channels: [
-            { name: 'France 24', icon: '🇫🇷' },
-            { name: 'i24 English', icon: '🇬🇧' },
-            { name: 'i24 Français', icon: '🇫🇷' },
-            { name: 'Daystar', icon: '⛪' },
-        ]
-    },
-};
 
 const CINEMA = {
     lights: [
@@ -340,19 +237,28 @@ async function smartConsole(c) {
 }
 
 /* ============================================================
-   FREETV — Lancement chaîne directe
+   FREETV — Ouverture + Navigation TV
    ============================================================ */
-async function launchFreeTV(channelName) {
+async function openFreeTV() {
     if (S.busy) return;
     lockBusy();
-    toast(`📺 ${channelName} — מפעיל...`, 'info');
+    toast('📺 FreeTV — מפעיל...', 'info');
     try {
         await ensureCinema();
         await adbLaunch('tv.freetv.androidtv');
         await sleep(4000);
-        toast(`✅ FreeTV פתוח — ${channelName}`, 'success');
-    } catch (e) { console.error(e); toast(`⚠️ שגיאה`, 'error'); }
+        await fetchStates();
+        toast('✅ FreeTV פתוח!', 'success');
+    } catch (e) { console.error(e); toast('⚠️ שגיאה', 'error'); }
     unlockBusy();
+}
+
+async function tvChannelUp() {
+    await adb('input keyevent KEYCODE_CHANNEL_UP');
+}
+
+async function tvChannelDown() {
+    await adb('input keyevent KEYCODE_CHANNEL_DOWN');
 }
 
 async function sendDigit(d) {
@@ -604,20 +510,7 @@ function renderSources() {
     document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
 }
 
-function renderFreeTV() {
-    const g = document.getElementById('freetvGrid'); if (!g) return;
-    let html = '';
-    for (const [, cat] of Object.entries(FREETV_CHANNELS)) {
-        html += `<div class="ftv-cat-title">${cat.title}</div>`;
-        html += cat.channels.map(ch =>
-            `<div class="ftv-ch" data-name="${ch.name}"><span class="ftv-icon">${ch.icon}</span><span class="ftv-name">${ch.name}</span></div>`
-        ).join('');
-    }
-    g.innerHTML = html;
-    g.querySelectorAll('.ftv-ch').forEach(t => {
-        t.addEventListener('click', () => launchFreeTV(t.dataset.name));
-    });
-}
+function renderFreeTV() {}
 
 function renderAudio() {
     const e = S.entities[RECEIVER]; if (!e) return;
@@ -751,6 +644,10 @@ function initEvents() {
     document.getElementById('kbInput')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') { adbText(e.target.value); e.target.value = ''; }
     });
+
+    document.getElementById('btnOpenFreeTV')?.addEventListener('click', () => openFreeTV());
+    document.getElementById('btnChUp')?.addEventListener('click', () => tvChannelUp());
+    document.getElementById('btnChDown')?.addEventListener('click', () => tvChannelDown());
 
     document.querySelectorAll('.numpad-btn[data-digit]').forEach(b => b.addEventListener('click', () => {
         b.style.transform = 'scale(0.85)';

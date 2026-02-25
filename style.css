@@ -440,39 +440,43 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 }
 .src-console:hover { background: rgba(139,92,246,0.18) !important; }
 
-.ch-desc {
-    font-size: 0.62rem; color: var(--t3); text-align: center;
-    margin-bottom: 12px; font-style: italic;
-}
-
 /* ============================================================
-   FREETV GRID — 65+ chaînes organisées par catégorie
+   FREETV — Bouton ouverture + Navigation CH
    ============================================================ */
-.freetv-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-    gap: 6px;
+.ftv-open-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 100%; padding: 20px 16px; margin-bottom: 16px;
+    border-radius: var(--r); cursor: pointer;
+    background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(139,92,246,0.15));
+    border: 1px solid rgba(0,212,255,0.3);
+    transition: var(--tr); user-select: none; -webkit-user-select: none;
 }
-.ftv-cat-title {
-    grid-column: 1 / -1;
-    font-size: 0.68rem; font-weight: 700; color: var(--neon);
-    letter-spacing: 1px; padding: 10px 0 4px;
-    border-top: 1px solid rgba(0,212,255,0.08);
-    margin-top: 4px;
+.ftv-open-btn:hover {
+    background: linear-gradient(135deg, rgba(0,212,255,0.25), rgba(139,92,246,0.25));
+    border-color: rgba(0,212,255,0.5);
+    box-shadow: 0 0 30px rgba(0,212,255,0.2);
 }
-.ftv-cat-title:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+.ftv-open-btn:active { transform: scale(0.96); }
+.ftv-open-icon { font-size: 2.5rem; margin-bottom: 6px; }
+.ftv-open-text { font-size: 1.1rem; font-weight: 700; color: var(--t1); }
+.ftv-open-sub { font-size: 0.7rem; color: var(--t3); margin-top: 4px; }
 
-.ftv-ch {
-    display: flex; align-items: center; gap: 6px;
-    padding: 10px 8px; border-radius: 10px;
-    background: var(--glass); border: 1px solid var(--gb);
-    cursor: pointer; transition: var(--tr);
-    user-select: none; -webkit-user-select: none;
+.ftv-nav {
+    display: flex; align-items: center; justify-content: center; gap: 20px;
+    margin-bottom: 16px;
 }
-.ftv-ch:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
-.ftv-ch:active { transform: scale(0.93); }
-.ftv-icon { font-size: 1.1rem; flex-shrink: 0; }
-.ftv-name { font-size: 0.58rem; font-weight: 600; color: var(--t2); line-height: 1.2; }
+.ftv-ch-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 72px; height: 72px;
+    border-radius: 50%; cursor: pointer;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t1); font-size: 0.85rem; font-weight: 700;
+    transition: var(--tr); user-select: none; -webkit-user-select: none;
+}
+.ftv-ch-btn:hover { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.35); color: var(--neon); }
+.ftv-ch-btn:active { transform: scale(0.85); box-shadow: 0 0 20px rgba(0,212,255,0.4); }
+.ftv-ch-arrow { font-size: 1.3rem; line-height: 1; }
+.ftv-ch-label { font-size: 0.85rem; font-weight: 700; color: var(--t2); text-align: center; }
 
 /* ============================================================
    AUDIO
