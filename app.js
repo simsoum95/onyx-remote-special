@@ -1,6 +1,7 @@
 /**
  * ONYX REMOTE SPECIAL — PWA Standalone
  * Toutes les requêtes passent par /api/ha (proxy Vercel) — zéro CORS.
+ * Clic source/app = allumage auto complet + lancement.
  */
 
 const CINEMA = {
@@ -13,7 +14,7 @@ const CINEMA = {
     ],
     cover: { id: 'cover.cinema_curtains' },
     receiver: { id: 'media_player.pioneer_vsx_lx303_ed2279', name: 'מגבר Pioneer' },
-    projector: { id: 'media_player.epson', name: 'מקרן' },
+    projector: { id: 'media_player.epson', name: 'מקרן Epson' },
     players: [
         { id: 'media_player.shield', name: 'Shield', emoji: '🛡️' },
         { id: 'media_player.shield_2', name: 'Shield 2', emoji: '🛡️' },
@@ -47,7 +48,7 @@ const ALL_IDS = [
 const S = { entities: {}, cinemaOn: false, busy: false, poll: null };
 
 /* ============================================================
-   API — Toutes les requêtes passent par le proxy Vercel
+   API
    ============================================================ */
 async function haGet(path) {
     const res = await fetch(`/api/ha?path=${encodeURIComponent(path)}`);
@@ -94,6 +95,40 @@ async function callSvc(domain, service, data) {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function isOn(id) { return ['on','playing','idle','paused'].includes(S.entities[id]?.state); }
+
+/* ============================================================
+   CINEMA ON — Séquence complète d'allumage
+   ============================================================ */
+async function ensureCinemaOn() {
+    const pOn = isOn(CINEMA.projector.id);
+    const rOn = isOn(CINEMA.receiver.id);
+    if (pOn && rOn) return true;
+
+    toast('🎬 מפעיל קולנוע...', 'info');
+
+    await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
+    await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
+
+    if (!pOn) await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
+    if (!rOn) await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
+
+    await sleep(4000);
+    await fetchStates();
+
+    if (!isOn(CINEMA.projector.id)) {
+        await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
+        await sleep(3000);
+    }
+    if (!isOn(CINEMA.receiver.id)) {
+        await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
+        await sleep(2000);
+    }
+
+    await fetchStates();
+    toast('🎬 קולנוע פעיל!', 'success');
+    return true;
+}
 
 /* ============================================================
    SCENES
@@ -101,28 +136,21 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function runScene(name) {
     if (S.busy) return;
     S.busy = true;
-    const btn = document.getElementById('btnPower');
-    if (btn) btn.classList.add('loading');
-    toast(sceneMsg(name, 'go'), 'info');
+    setBusy(true);
 
     try {
         if (name === 'cinema_on') {
-            await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
-            await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
-            await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
-            await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
-            await sleep(3000);
-            await fetchStates();
-            const pOk = ['on','playing','idle'].includes(S.entities[CINEMA.projector.id]?.state);
-            if (!pOk) { await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id }); await sleep(2000); }
-            const rOk = ['on','playing','idle'].includes(S.entities[CINEMA.receiver.id]?.state);
-            if (!rOk) { await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id }); await sleep(2000); }
+            await ensureCinemaOn();
         } else if (name === 'cinema_off') {
+            toast('🔴 מכבה...', 'info');
             await callSvc('media_player', 'turn_off', { entity_id: CINEMA.projector.id });
             await callSvc('media_player', 'turn_off', { entity_id: CINEMA.receiver.id });
             await sleep(1000);
             await callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
+            await fetchStates();
+            toast('🔴 הקולנוע כבוי', 'success');
         } else if (name === 'ambient') {
+            toast('✨ מצב אווירה...', 'info');
             await Promise.all([
                 callSvc('light', 'turn_off', { entity_id: 'light.7b_cinema_basement_smallspot_switch' }),
                 callSvc('light', 'turn_off', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
@@ -130,25 +158,70 @@ async function runScene(name) {
                 callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' }),
                 callSvc('light', 'turn_on', { entity_id: 'light.9a_cinema_basement_posterwall_switch' }),
             ]);
+            await fetchStates();
+            toast('✨ אווירה פעילה', 'success');
         } else if (name === 'pause') {
+            toast('⏸ הפסקה...', 'info');
             await callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' });
+            await fetchStates();
+            toast('⏸ תאורת הפסקה', 'success');
         }
-        await fetchStates();
-        toast(sceneMsg(name, 'ok'), 'success');
     } catch { toast('שגיאה בהפעלה', 'error'); }
 
     S.busy = false;
-    if (btn) btn.classList.remove('loading');
+    setBusy(false);
 }
 
-function sceneMsg(s, t) {
-    const M = {
-        cinema_on:  { go:'🎬 מפעיל קולנוע...', ok:'🎬 קולנוע פעיל!' },
-        cinema_off: { go:'🔴 מכבה...', ok:'🔴 הקולנוע כבוי' },
-        ambient:    { go:'✨ מצב אווירה...', ok:'✨ אווירה פעילה' },
-        pause:      { go:'⏸ הפסקה...', ok:'⏸ תאורת הפסקה' },
-    };
-    return M[s]?.[t] || s;
+/* ============================================================
+   SOURCE = allume tout + change source
+   ============================================================ */
+async function smartSource(scriptId, name) {
+    if (S.busy) return;
+    S.busy = true;
+    setBusy(true);
+    toast(`🎯 ${name}...`, 'info');
+
+    try {
+        await ensureCinemaOn();
+        await callSvc('script', 'turn_on', { entity_id: scriptId });
+        await sleep(2000);
+        await fetchStates();
+        toast(`✅ ${name} פעיל!`, 'success');
+    } catch { toast('שגיאה', 'error'); }
+
+    S.busy = false;
+    setBusy(false);
+}
+
+/* ============================================================
+   APP = allume tout + lance l'app sur le Shield
+   ============================================================ */
+async function smartApp(pkg, name) {
+    if (S.busy) return;
+    S.busy = true;
+    setBusy(true);
+    toast(`📱 ${name}...`, 'info');
+
+    try {
+        await ensureCinemaOn();
+
+        const ok = await callSvc('remote', 'turn_on', {
+            entity_id: 'remote.shield',
+            activity: pkg,
+        });
+        if (!ok) {
+            await callSvc('androidtv', 'adb_command', {
+                entity_id: 'media_player.shield',
+                command: `am start -a android.intent.action.VIEW -n ${pkg}`,
+            });
+        }
+        await sleep(2000);
+        await fetchStates();
+        toast(`✅ ${name} פעיל!`, 'success');
+    } catch { toast('שגיאה', 'error'); }
+
+    S.busy = false;
+    setBusy(false);
 }
 
 /* ============================================================
@@ -179,29 +252,9 @@ async function devOff(id) {
 }
 
 async function toggleDev(id) {
-    const on = ['on','playing','idle','paused'].includes(S.entities[id]?.state);
+    const on = isOn(id);
     await callSvc('media_player', on ? 'turn_off' : 'turn_on', { entity_id: id });
     setTimeout(fetchStates, 3000);
-}
-
-async function fireSource(id) {
-    await callSvc('script', 'turn_on', { entity_id: id });
-    toast('🎯 מקור הופעל', 'success');
-    setTimeout(fetchStates, 3000);
-}
-
-async function launchApp(pkg) {
-    const ok = await callSvc('remote', 'turn_on', {
-        entity_id: 'remote.shield',
-        activity: pkg,
-    });
-    if (!ok) {
-        await callSvc('androidtv', 'adb_command', {
-            entity_id: 'media_player.shield',
-            command: `am start -a android.intent.action.VIEW -n ${pkg}`,
-        });
-    }
-    toast('📱 אפליקציה נפתחת...', 'success');
 }
 
 async function volStep(dir) {
@@ -230,6 +283,7 @@ async function allLights(svc) {
    ============================================================ */
 function renderAll() {
     renderStatusBar();
+    renderProjectorStatus();
     renderLights();
     renderCurtain();
     renderSources();
@@ -238,8 +292,6 @@ function renderAll() {
     renderDevices();
     updateHero();
 }
-
-function isOn(id) { return ['on','playing','idle','paused'].includes(S.entities[id]?.state); }
 
 function renderStatusBar() {
     const pOn = isOn(CINEMA.projector.id);
@@ -267,6 +319,46 @@ function setStatItem(elId, on, text) {
     if (val) val.textContent = text;
 }
 
+function renderProjectorStatus() {
+    const pOn = isOn(CINEMA.projector.id);
+    const rOn = isOn(CINEMA.receiver.id);
+    const el = document.getElementById('projectorPanel');
+    if (!el) return;
+
+    el.innerHTML = `
+        <div class="proj-row">
+            <div class="proj-device ${pOn ? 'on' : 'off'}">
+                <span class="proj-dot"></span>
+                <span class="proj-icon">📽️</span>
+                <span class="proj-name">מקרן</span>
+                <span class="proj-state">${pOn ? 'דלוק' : 'כבוי'}</span>
+            </div>
+            <div class="proj-btns">
+                <button class="pbtn pbtn-on" data-id="${CINEMA.projector.id}" data-act="on">הפעלה</button>
+                <button class="pbtn pbtn-off" data-id="${CINEMA.projector.id}" data-act="off">כיבוי</button>
+            </div>
+        </div>
+        <div class="proj-row">
+            <div class="proj-device ${rOn ? 'on' : 'off'}">
+                <span class="proj-dot"></span>
+                <span class="proj-icon">🔊</span>
+                <span class="proj-name">מגבר</span>
+                <span class="proj-state">${rOn ? 'דלוק' : 'כבוי'}</span>
+            </div>
+            <div class="proj-btns">
+                <button class="pbtn pbtn-on" data-id="${CINEMA.receiver.id}" data-act="on">הפעלה</button>
+                <button class="pbtn pbtn-off" data-id="${CINEMA.receiver.id}" data-act="off">כיבוי</button>
+            </div>
+        </div>`;
+
+    el.querySelectorAll('.pbtn').forEach(b => {
+        b.addEventListener('click', e => {
+            e.stopPropagation();
+            b.dataset.act === 'on' ? devOn(b.dataset.id) : devOff(b.dataset.id);
+        });
+    });
+}
+
 function renderLights() {
     const g = document.getElementById('lightsGrid'); if (!g) return;
     g.innerHTML = CINEMA.lights.map(l => {
@@ -287,12 +379,22 @@ function renderCurtain() {
 
 function renderSources() {
     const g = document.getElementById('sourcesGrid'); if (!g) return;
-    g.innerHTML = CINEMA.sources.map(s => `<div class="src" data-id="${s.id}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`).join('');
+    g.innerHTML = CINEMA.sources.map(s =>
+        `<div class="src" data-id="${s.id}" data-name="${s.name}"><div class="src-e">${s.emoji}</div><div class="src-n">${s.name}</div></div>`
+    ).join('');
     g.querySelectorAll('.src').forEach(t => t.addEventListener('click', () => {
         g.querySelectorAll('.src').forEach(x => x.classList.remove('active'));
         t.classList.add('active');
-        fireSource(t.dataset.id);
+        smartSource(t.dataset.id, t.dataset.name);
     }));
+}
+
+function renderApps() {
+    const g = document.getElementById('appsGrid'); if (!g) return;
+    g.innerHTML = CINEMA.apps.map(a =>
+        `<div class="app-tile" data-pkg="${a.pkg}" data-name="${a.name}"><div class="app-e">${a.emoji}</div><div class="app-n">${a.name}</div></div>`
+    ).join('');
+    g.querySelectorAll('.app-tile').forEach(t => t.addEventListener('click', () => smartApp(t.dataset.pkg, t.dataset.name)));
 }
 
 function renderAudio() {
@@ -313,76 +415,27 @@ function renderAudio() {
 
 function renderDevices() {
     const g = document.getElementById('devicesGrid'); if (!g) return;
-
-    const mainDevs = [
-        { ...CINEMA.projector, emoji: '📽️', label: 'מקרן' },
-        { ...CINEMA.receiver, emoji: '🔊', label: 'מגבר' },
-    ];
-    const otherDevs = CINEMA.players;
-
-    g.innerHTML = mainDevs.map(d => {
+    g.innerHTML = CINEMA.players.map(d => {
         const st = S.entities[d.id]?.state || 'unavailable';
-        const on = ['on','playing','idle','paused'].includes(st);
-        return `<div class="dev-main ${on ? 'on' : 'off'}">
-            <div class="dev-info"><span class="dev-e">${d.emoji}</span><span class="dev-n">${d.label}</span></div>
-            <div class="dev-status">${on ? '🟢 דלוק' : '🔴 כבוי'}</div>
-            <div class="dev-btns">
-                <button class="dev-btn dev-on" data-id="${d.id}" data-act="on">הפעלה</button>
-                <button class="dev-btn dev-off" data-id="${d.id}" data-act="off">כיבוי</button>
-            </div>
-        </div>`;
-    }).join('') + otherDevs.map(d => {
-        const st = S.entities[d.id]?.state || 'unavailable';
-        const on = ['on','playing','idle','paused'].includes(st);
+        const on = isOn(d.id);
         return `<div class="dev ${on ? 'on' : 'off'}" data-id="${d.id}"><div class="dev-e">${d.emoji}</div><div class="dev-n">${d.name}</div><div class="dev-s">${on ? 'דלוק' : st === 'unavailable' ? '—' : 'כבוי'}</div></div>`;
     }).join('');
-
-    g.querySelectorAll('.dev-btn').forEach(b => {
-        b.addEventListener('click', e => {
-            e.stopPropagation();
-            const id = b.dataset.id;
-            b.dataset.act === 'on' ? devOn(id) : devOff(id);
-        });
-    });
-    g.querySelectorAll('.dev[data-id]').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
-}
-
-function renderApps() {
-    const g = document.getElementById('appsGrid'); if (!g) return;
-    g.innerHTML = CINEMA.apps.map(a =>
-        `<div class="app-tile" data-pkg="${a.pkg}"><div class="app-e">${a.emoji}</div><div class="app-n">${a.name}</div></div>`
-    ).join('');
-    g.querySelectorAll('.app-tile').forEach(t => t.addEventListener('click', () => launchApp(t.dataset.pkg)));
+    g.querySelectorAll('.dev').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
 }
 
 function updateHero() {
     const pOn = isOn(CINEMA.projector.id);
     const rOn = isOn(CINEMA.receiver.id);
-    const cCl = S.entities[CINEMA.cover.id]?.state === 'closed';
-    const lOff = CINEMA.lights.every(l => { const e = S.entities[l.id]; return !e || e.state === 'off' || e.state === 'unavailable'; });
-    S.cinemaOn = pOn && rOn && cCl && lOff;
+    S.cinemaOn = pOn && rOn;
 
     const orb = document.getElementById('heroOrbit');
     const sub = document.getElementById('heroSub');
     const btn = document.getElementById('btnPower');
     const lab = document.getElementById('powerLabel');
     if (orb) orb.classList.toggle('on', S.cinemaOn);
-    if (sub) { sub.textContent = S.cinemaOn ? '🟢 פעיל' : 'מוכן'; sub.classList.toggle('on', S.cinemaOn); }
+    if (sub) { sub.textContent = S.cinemaOn ? '🟢 קולנוע פעיל' : '⚫ קולנוע כבוי'; sub.classList.toggle('on', S.cinemaOn); }
     if (btn) btn.classList.toggle('on', S.cinemaOn);
     if (lab) lab.textContent = S.cinemaOn ? 'כיבוי' : 'הפעלה';
-
-    const hlP = document.getElementById('hlProjector');
-    const hlR = document.getElementById('hlReceiver');
-    const hlC = document.getElementById('hlCurtain');
-    const hlL = document.getElementById('hlLights');
-    const lightsOn = CINEMA.lights.filter(l => S.entities[l.id]?.state === 'on').length;
-    const cState = S.entities[CINEMA.cover.id]?.state;
-    const cLabels = { open:'פתוח', closed:'סגור', opening:'נפתח', closing:'נסגר' };
-
-    if (hlP) { hlP.textContent = pOn ? '🟢 דלוק' : '🔴 כבוי'; hlP.className = 'hl-val ' + (pOn ? 'hl-on' : 'hl-off'); }
-    if (hlR) { hlR.textContent = rOn ? '🟢 דלוק' : '🔴 כבוי'; hlR.className = 'hl-val ' + (rOn ? 'hl-on' : 'hl-off'); }
-    if (hlC) { hlC.textContent = cLabels[cState] || '—'; hlC.className = 'hl-val ' + (cState === 'closed' ? 'hl-on' : 'hl-off'); }
-    if (hlL) { hlL.textContent = lightsOn === 0 ? '🟢 הכל כבוי' : `🟡 ${lightsOn} דלוקות`; hlL.className = 'hl-val ' + (lightsOn === 0 ? 'hl-on' : 'hl-warn'); }
 }
 
 /* ============================================================
@@ -401,6 +454,12 @@ function setOnline(on) {
     const l = document.getElementById('hdrLabel');
     if (d) d.classList.toggle('on', on);
     if (l) l.textContent = on ? 'מחובר' : 'מנותק';
+}
+
+function setBusy(on) {
+    const btn = document.getElementById('btnPower');
+    if (btn) btn.classList.toggle('loading', on);
+    document.body.classList.toggle('busy', on);
 }
 
 function showView(id) {

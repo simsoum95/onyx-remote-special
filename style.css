@@ -264,23 +264,57 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .hero-sub { font-size: 0.65rem; color: var(--t3); margin-bottom: 12px; }
 .hero-sub.on { color: var(--neon); }
 
-.hero-live {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 6px; margin-bottom: 18px;
-    padding: 10px 12px;
-    border-radius: var(--rs);
-    background: rgba(0,0,0,0.2);
-    border: 1px solid rgba(255,255,255,0.04);
+/* Panneau projecteur/receiver dédié */
+.projector-panel {
+    width: 100%; margin-bottom: 16px;
+    display: flex; flex-direction: column; gap: 6px;
 }
-.hero-live-row {
+.proj-row {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 6px; padding: 3px 6px;
-    font-size: 0.62rem; color: var(--t2);
+    padding: 8px 12px; border-radius: 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.05);
 }
-.hl-val { font-weight: 700; font-size: 0.6rem; }
-.hl-on { color: var(--green); }
-.hl-off { color: var(--red); }
-.hl-warn { color: var(--gold); }
+.proj-device { display: flex; align-items: center; gap: 8px; }
+.proj-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--red); flex-shrink: 0;
+    transition: var(--tr);
+}
+.proj-device.on .proj-dot {
+    background: var(--green);
+    box-shadow: 0 0 10px var(--grng), 0 0 20px rgba(0,230,118,0.2);
+    animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+    0%, 100% { box-shadow: 0 0 10px var(--grng); }
+    50% { box-shadow: 0 0 18px var(--grng), 0 0 30px rgba(0,230,118,0.3); }
+}
+.proj-icon { font-size: 1.1rem; }
+.proj-name { font-size: 0.7rem; font-weight: 700; color: var(--t1); }
+.proj-state { font-size: 0.58rem; font-weight: 600; font-family: var(--tech); letter-spacing: 1px; }
+.proj-device.on .proj-state { color: var(--green); }
+.proj-device.off .proj-state { color: var(--red); }
+.proj-btns { display: flex; gap: 5px; }
+.pbtn {
+    padding: 5px 12px; border-radius: 16px;
+    font-size: 0.55rem; font-weight: 700; border: none; cursor: pointer;
+    transition: var(--tr); font-family: var(--heb);
+}
+.pbtn-on {
+    background: rgba(0,230,118,0.15); color: var(--green);
+    border: 1px solid rgba(0,230,118,0.25);
+}
+.pbtn-on:hover { background: rgba(0,230,118,0.3); }
+.pbtn-off {
+    background: rgba(255,71,87,0.15); color: var(--red);
+    border: 1px solid rgba(255,71,87,0.25);
+}
+.pbtn-off:hover { background: rgba(255,71,87,0.3); }
+
+body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
+    pointer-events: none; opacity: 0.5;
+}
 
 .hero-power {
     position: relative; width: 100%; max-width: 220px; padding: 14px; border-radius: 28px;
@@ -527,7 +561,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     .status-bar { padding: 8px 12px 0; gap: 5px; }
     .stat-item { padding: 6px 8px; font-size: 0.6rem; min-width: 70px; }
     .stat-label { display: none; }
-    .hero-live { grid-template-columns: 1fr; gap: 4px; }
+    .proj-row { flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .proj-btns { width: 100%; justify-content: center; }
     .main-pc {
         grid-template-columns: 1fr;
         padding: 12px 12px calc(var(--navh) + var(--sb) + 16px);
