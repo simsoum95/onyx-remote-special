@@ -121,7 +121,6 @@ async function runScene(name) {
             await callSvc('media_player', 'turn_off', { entity_id: CINEMA.projector.id });
             await callSvc('media_player', 'turn_off', { entity_id: CINEMA.receiver.id });
             await sleep(1000);
-            await callSvc('cover', 'open_cover', { entity_id: CINEMA.cover.id });
             await callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
         } else if (name === 'ambient') {
             await Promise.all([
@@ -131,7 +130,6 @@ async function runScene(name) {
                 callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' }),
                 callSvc('light', 'turn_on', { entity_id: 'light.9a_cinema_basement_posterwall_switch' }),
             ]);
-            await callSvc('cover', 'open_cover', { entity_id: CINEMA.cover.id });
         } else if (name === 'pause') {
             await callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' });
         }
