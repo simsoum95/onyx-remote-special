@@ -315,6 +315,25 @@ async function toggleMute() {
     setTimeout(fetchStates, 800);
 }
 
+async function sendRemoteCmd(cmd) {
+    await callSvc('remote', 'send_command', {
+        entity_id: 'remote.shield',
+        command: cmd,
+    });
+}
+
+async function sendText(text) {
+    if (!text) return;
+    for (const ch of text) {
+        await callSvc('remote', 'send_command', {
+            entity_id: 'remote.shield',
+            command: ch,
+        });
+        await sleep(100);
+    }
+    toast(`⌨️ "${text}" נשלח`, 'success');
+}
+
 async function allLights(svc) {
     await Promise.all(CINEMA.lights.map(l => callSvc('light', svc, { entity_id: l.id })));
     toast(svc === 'turn_on' ? '💡 הכל דלוק' : '🌑 הכל כבוי', 'success');
@@ -556,10 +575,20 @@ function initEvents() {
 
     document.getElementById('btnRefresh')?.addEventListener('click', () => { fetchStates(); toast('🔄 מרענן...', 'info'); });
 
+    document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => sendRemoteCmd(b.dataset.cmd)));
+    document.getElementById('kbToggle')?.addEventListener('click', () => document.getElementById('kbPanel')?.classList.toggle('hidden'));
+    document.getElementById('kbSend')?.addEventListener('click', () => {
+        const inp = document.getElementById('kbInput');
+        if (inp?.value) { sendText(inp.value); inp.value = ''; }
+    });
+    document.getElementById('kbInput')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { const inp = e.target; sendText(inp.value); inp.value = ''; }
+    });
+
     document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.mn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
-        const map = { hero:'pcHero', lights:'lightsGrid', sources:'sourcesGrid', audio:'volNum' };
+        const map = { hero:'pcHero', lights:'lightsGrid', sources:'sourcesGrid', remote:'remoteCard', audio:'volNum' };
         const t = map[b.dataset.go];
         if (t) document.getElementById(t)?.closest('.glass-card')?.scrollIntoView({ behavior:'smooth', block:'start' });
     }));

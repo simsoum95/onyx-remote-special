@@ -460,6 +460,93 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 .app-n { font-size: 0.62rem; font-weight: 600; color: var(--t2); }
 
 /* ============================================================
+   REMOTE — Télécommande intelligente
+   ============================================================ */
+.dpad {
+    display: grid;
+    grid-template-areas: ". up ." "left ok right" ". down .";
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px; max-width: 220px; margin: 0 auto 16px;
+    direction: ltr;
+}
+.dp {
+    width: 100%; aspect-ratio: 1; border-radius: 16px;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t1); font-size: 1.2rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--tr);
+}
+.dp:hover { background: var(--gbh); border-color: var(--neon); }
+.dp:active { transform: scale(0.88); background: rgba(0,212,255,0.15); }
+.dp-up { grid-area: up; }
+.dp-down { grid-area: down; }
+.dp-left { grid-area: left; }
+.dp-right { grid-area: right; }
+.dp-ok {
+    grid-area: ok; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,212,255,0.05));
+    border-color: rgba(0,212,255,0.3);
+    font-weight: 900; font-size: 0.85rem; font-family: var(--tech);
+    letter-spacing: 2px; color: var(--neon);
+    box-shadow: 0 0 15px rgba(0,212,255,0.08);
+}
+.dp-ok:hover { background: rgba(0,212,255,0.25); box-shadow: 0 0 25px rgba(0,212,255,0.15); }
+.dp-ok:active { transform: scale(0.85); }
+
+.rmt-nav {
+    display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;
+}
+.rmt-btn {
+    padding: 8px 14px; border-radius: 20px;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t2); font-size: 0.62rem; font-weight: 600;
+    cursor: pointer; transition: var(--tr); font-family: var(--heb);
+}
+.rmt-btn:hover { background: var(--gbh); border-color: var(--neon); color: var(--neon); }
+.rmt-btn:active { transform: scale(0.92); }
+
+.rmt-media {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 6px; max-width: 240px; margin: 0 auto 14px;
+    direction: ltr;
+}
+.rmt-m {
+    padding: 10px; border-radius: 14px;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t2); font-size: 1.1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--tr);
+}
+.rmt-m:hover { background: var(--gbh); }
+.rmt-m:active { transform: scale(0.88); }
+.rmt-play {
+    background: linear-gradient(135deg, rgba(0,230,118,0.12), rgba(0,230,118,0.04));
+    border-color: rgba(0,230,118,0.25); font-size: 1.4rem;
+}
+.rmt-play:hover { background: rgba(0,230,118,0.2); }
+
+.rmt-kb-wrap { text-align: center; }
+.rmt-kb-toggle { width: 100%; }
+.rmt-kb {
+    display: flex; gap: 6px; margin-top: 8px;
+    direction: ltr;
+}
+.rmt-input {
+    flex: 1; padding: 8px 12px; border-radius: 12px;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--gb);
+    color: var(--t1); font-size: 0.72rem; outline: none;
+    font-family: var(--heb);
+}
+.rmt-input:focus { border-color: var(--neon); box-shadow: 0 0 10px rgba(0,212,255,0.15); }
+.rmt-send {
+    padding: 8px 16px; border-radius: 12px;
+    background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.25);
+    color: var(--neon); font-weight: 700; cursor: pointer;
+    font-family: var(--heb); font-size: 0.65rem;
+}
+.rmt-send:hover { background: rgba(0,212,255,0.25); }
+
+/* ============================================================
    SPEAKERS
    ============================================================ */
 .speakers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }

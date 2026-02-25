@@ -144,6 +144,41 @@
                         <button class="vol-btn vol-mute" id="vMute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
                     </div>
                 </div>
+                <!-- REMOTE — Télécommande intelligente -->
+                <div class="glass-card" id="remoteCard">
+                    <div class="card-hdr"><span class="card-ico">🕹️</span><span>שלט רחוק</span></div>
+                    <!-- D-pad -->
+                    <div class="dpad">
+                        <button class="dp dp-up" data-cmd="UP">▲</button>
+                        <button class="dp dp-left" data-cmd="LEFT">◀</button>
+                        <button class="dp dp-ok" data-cmd="SELECT">OK</button>
+                        <button class="dp dp-right" data-cmd="RIGHT">▶</button>
+                        <button class="dp dp-down" data-cmd="DOWN">▼</button>
+                    </div>
+                    <!-- Nav buttons -->
+                    <div class="rmt-nav">
+                        <button class="rmt-btn" data-cmd="BACK">↩ חזור</button>
+                        <button class="rmt-btn" data-cmd="HOME">🏠 בית</button>
+                        <button class="rmt-btn" data-cmd="MENU">☰ תפריט</button>
+                    </div>
+                    <!-- Media controls -->
+                    <div class="rmt-media">
+                        <button class="rmt-m" data-cmd="REWIND">⏪</button>
+                        <button class="rmt-m rmt-play" data-cmd="PLAY_PAUSE">⏯</button>
+                        <button class="rmt-m" data-cmd="FAST_FORWARD">⏩</button>
+                        <button class="rmt-m" data-cmd="PREVIOUS">⏮</button>
+                        <button class="rmt-m" data-cmd="STOP">⏹</button>
+                        <button class="rmt-m" data-cmd="NEXT">⏭</button>
+                    </div>
+                    <!-- Keyboard toggle -->
+                    <div class="rmt-kb-wrap">
+                        <button class="rmt-btn rmt-kb-toggle" id="kbToggle">⌨️ מקלדת</button>
+                        <div class="rmt-kb hidden" id="kbPanel">
+                            <input type="text" class="rmt-input" id="kbInput" placeholder="הקלד לחיפוש..." dir="ltr">
+                            <button class="rmt-btn rmt-send" id="kbSend">שלח</button>
+                        </div>
+                    </div>
+                </div>
                 <!-- Speakers -->
                 <div class="glass-card">
                     <div class="card-hdr"><span class="card-ico">🔈</span><span>רמקולים</span></div>
@@ -162,6 +197,7 @@
             <button class="mn active" data-go="hero"><span class="mn-i">🎬</span><span>קולנוע</span></button>
             <button class="mn" data-go="lights"><span class="mn-i">💡</span><span>תאורה</span></button>
             <button class="mn" data-go="sources"><span class="mn-i">📡</span><span>מקורות</span></button>
+            <button class="mn" data-go="remote"><span class="mn-i">🕹️</span><span>שלט</span></button>
             <button class="mn" data-go="audio"><span class="mn-i">🔊</span><span>שמע</span></button>
         </nav>
 
