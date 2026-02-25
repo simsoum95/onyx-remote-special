@@ -10,13 +10,13 @@ const SHIELD_MP = 'media_player.shield_2';
 const SHIELD_ADB = 'media_player.android_tv_192_168_1_80';
 
 const APPS = [
-    { name: 'FreeTV', pkg: 'tv.freetv.androidtv', logo: null, color: '#00d4ff' },
+    { name: 'FreeTV', pkg: 'tv.freetv.androidtv', logo: '/img/freetv.png' },
     { name: 'Netflix', pkg: 'com.netflix.ninja', logo: 'https://cdn.simpleicons.org/netflix/E50914' },
     { name: 'Plex', pkg: 'com.plexapp.android', logo: 'https://cdn.simpleicons.org/plex/E5A00D' },
     { name: 'YouTube', pkg: 'com.google.android.youtube.tv', logo: 'https://cdn.simpleicons.org/youtube/FF0000' },
-    { name: 'Prime Video', pkg: 'com.amazon.amazonvideo.livingroom', logo: 'https://cdn.simpleicons.org/primevideo/00A8E1' },
+    { name: 'Prime Video', pkg: 'com.amazon.amazonvideo.livingroom', logo: '/img/prime.png' },
     { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', logo: 'https://cdn.simpleicons.org/appletv/FFFFFF' },
-    { name: 'Disney+', pkg: 'com.disney.disneyplus', logo: 'https://cdn.simpleicons.org/disneyplus/113CCF' },
+    { name: 'Disney+', pkg: 'com.disney.disneyplus', logo: '/img/disney.png' },
     { name: 'Spotify', pkg: 'com.spotify.tv.android', logo: 'https://cdn.simpleicons.org/spotify/1DB954' },
     { name: 'PS5', pkg: null, input: 'GAME', logo: 'https://cdn.simpleicons.org/playstation/FFFFFF', console: true },
 ];
@@ -383,11 +383,8 @@ function renderApps() {
     const cur = getShieldApp();
     g.innerHTML = APPS.map((a, i) => {
         const isActive = !a.console && cur === a.pkg;
-        const logoHtml = a.logo
-            ? `<img class="app-logo" src="${a.logo}" alt="${a.name}">`
-            : `<span class="app-text-logo" style="color:${a.color || '#fff'}">📺</span>`;
         return `<button class="app-tile ${isActive ? 'active' : ''}" data-idx="${i}" title="${a.name}">
-            ${logoHtml}
+            <img class="app-logo" src="${a.logo}" alt="${a.name}">
         </button>`;
     }).join('');
     g.querySelectorAll('.app-tile').forEach(t => {

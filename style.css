@@ -188,8 +188,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .app-tile:active { transform: scale(0.9); }
 .app-tile.active { border-color: var(--neon); background: rgba(0,212,255,0.1); box-shadow: 0 0 15px rgba(0,212,255,0.1); }
-.app-logo { width: 40px; height: 40px; object-fit: contain; }
-.app-text-logo { font-size: 2.2rem; }
+.app-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 10px; }
 
 /* ============================================================
    TAB 3: REMOTE
