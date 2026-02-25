@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<rect width="512" height="512" fill="#050510"/>
+<circle cx="256" cy="256" r="195" fill="none" stroke="#00d4ff" stroke-width="8" opacity="0.5"/>
+<circle cx="256" cy="256" r="143" fill="none" stroke="#8b5cf6" stroke-width="5" opacity="0.35"/>
+<circle cx="256" cy="256" r="77" fill="rgba(0,212,255,0.12)"/>
+<text x="256" y="287" text-anchor="middle" fill="#00d4ff" font-family="Arial,sans-serif" font-weight="bold" font-size="92">ONYX</text>
+</svg>
