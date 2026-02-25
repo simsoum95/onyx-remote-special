@@ -1,7 +1,6 @@
 /**
- * ONYX REMOTE — Télécommande Super Intelligente
- * Contrôle 100% ADB + Réseau Direct — ZERO Harmony / ZERO IR
- * 65+ chaînes FreeTV + toutes les apps + contrôle total
+ * ONYX REMOTE — Interface Minimale
+ * 4 onglets : Cinema / Apps / Remote / Salle
  */
 
 const RECEIVER = 'media_player.receiver';
@@ -11,48 +10,15 @@ const SHIELD_MP = 'media_player.shield_2';
 const SHIELD_ADB = 'media_player.android_tv_192_168_1_80';
 
 const APPS = [
-    { name: 'Netflix', pkg: 'com.netflix.ninja', icon: '🎬', cat: 'streaming' },
-    { name: 'Free TV', pkg: 'tv.freetv.androidtv', icon: '📡', cat: 'tv' },
-    { name: 'Plex', pkg: 'com.plexapp.android', icon: '🎞️', cat: 'streaming' },
-    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', icon: '▶️', cat: 'streaming' },
-    { name: 'Amazon Prime', pkg: 'com.amazon.amazonvideo.livingroom', icon: '📦', cat: 'streaming' },
-    { name: 'Spotify', pkg: 'com.spotify.tv.android', icon: '🎵', cat: 'music' },
-    { name: 'Mako', pkg: 'com.keshet.mako.VODAndroidTV', icon: '🔷', cat: 'israel' },
-    { name: 'Hot', pkg: 'il.net.hot.hot', icon: '🔴', cat: 'israel' },
-    { name: 'Reshet 13', pkg: 'com.applicaster.iReshet', icon: '📺', cat: 'israel' },
-    { name: 'כאן 11', pkg: 'com.applicaster.il.ch1', icon: '🟢', cat: 'israel' },
-    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', icon: '🍎', cat: 'streaming' },
-    { name: 'Disney+', pkg: 'com.disney.disneyplus', icon: '🏰', cat: 'streaming' },
-    { name: 'YT Music', pkg: 'com.google.android.youtube.tvmusic', icon: '🎶', cat: 'music' },
-    { name: 'Startup+', pkg: 'tv.startupshow.android', icon: '🌟', cat: 'israel' },
-    { name: 'Web Browser', pkg: 'com.tvwebbrowser.v22', icon: '🌐', cat: 'tools' },
-    { name: 'Play Store', pkg: 'com.android.vending', icon: '🛒', cat: 'tools' },
-];
-
-const CONSOLES = [
-    { name: 'PlayStation 5', input: 'GAME', icon: '🎮' },
-];
-
-const TV_CHANNELS = [
-    { name: 'כאן 11', icon: '🟢', row: 0, col: 0 },
-    { name: 'קשת 12', icon: '🔷', row: 0, col: 1 },
-    { name: 'רשת 13', icon: '🔵', row: 0, col: 2 },
-    { name: 'ערוץ 14', icon: '🟠', row: 0, col: 3 },
-    { name: 'i24 News', icon: '🌍', row: 0, col: 4 },
-    { name: '10STARS', icon: '⭐', row: 0, col: 5 },
-    { name: 'כנסת', icon: '🏛️', row: 0, col: 6 },
-    { name: 'מכאן 33', icon: '3️⃣', row: 0, col: 7 },
-    { name: 'ערוץ 9', icon: '9️⃣', row: 0, col: 8 },
-    { name: 'ערוץ 24', icon: '📰', row: 0, col: 9 },
-    { name: 'ספורט 5', icon: '⚽', row: 1, col: 0 },
-    { name: 'ספורט 5+', icon: '🏀', row: 1, col: 1 },
-    { name: 'ספורט 5 Gold', icon: '🥇', row: 1, col: 2 },
-    { name: 'ספורט 5 Live', icon: '🔴', row: 1, col: 3 },
-    { name: 'ספורט 5 Stars', icon: '⭐', row: 1, col: 4 },
-    { name: 'ספורט 5 MAX', icon: '💪', row: 1, col: 5 },
-    { name: 'ONE', icon: '1️⃣', row: 1, col: 6 },
-    { name: 'ONE 2', icon: '2️⃣', row: 1, col: 7 },
-    { name: 'EDGE', icon: '🏋️', row: 1, col: 8 },
+    { name: 'Netflix', pkg: 'com.netflix.ninja', icon: '🎬' },
+    { name: 'Plex', pkg: 'com.plexapp.android', icon: '🎞️' },
+    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', icon: '▶️' },
+    { name: 'Amazon Prime', pkg: 'com.amazon.amazonvideo.livingroom', icon: '📦' },
+    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', icon: '🍎' },
+    { name: 'Disney+', pkg: 'com.disney.disneyplus', icon: '🏰' },
+    { name: 'Spotify', pkg: 'com.spotify.tv.android', icon: '🎵' },
+    { name: 'Mako', pkg: 'com.keshet.mako.VODAndroidTV', icon: '🔷' },
+    { name: 'PS5', pkg: null, input: 'GAME', icon: '🎮', console: true },
 ];
 
 const CINEMA = {
@@ -79,7 +45,7 @@ const ALL_IDS = [
     ...CINEMA.speakers.map(s => s.id),
 ];
 
-const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false };
+const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false, tab: 'cinema' };
 
 function lockBusy() {
     S.busy = true; setBusy(true);
@@ -145,28 +111,19 @@ function getShieldApp() {
 async function adbLaunch(pkg) {
     await adb(`monkey -p ${pkg} -c android.intent.category.LEANBACK_LAUNCHER 1 2>/dev/null || monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`);
 }
-
-async function adbText(text) {
-    if (!text) return;
-    await adb(`input text "${text.replace(/["\\ ]/g, c => '\\' + c)}"`);
-    toast(`⌨️ "${text}" נשלח`, 'success');
-}
-
 async function adbKey(k) { await adb(`input keyevent ${k}`); }
 
 /* ============================================================
-   CONTRÔLE RÉSEAU — Projecteur + Receiver
+   CONTRÔLE RÉSEAU
    ============================================================ */
 async function projectorOn() {
     toast('📽️ מדליק מקרן...', 'info');
     await callSvc('media_player', 'turn_on', { entity_id: PROJECTOR });
     for (let i = 0; i < 8; i++) {
-        await sleep(3000);
-        await fetchStates();
+        await sleep(3000); await fetchStates();
         if (isProjectorOn()) { toast('✅ מקרן דלוק!', 'success'); return true; }
     }
-    toast('⚠️ בדוק מקרן', 'error');
-    return false;
+    toast('⚠️ בדוק מקרן', 'error'); return false;
 }
 
 async function projectorOff() {
@@ -178,8 +135,7 @@ async function projectorOff() {
 async function receiverOn() {
     toast('🔊 מדליק מגבר...', 'info');
     await callSvc('media_player', 'turn_on', { entity_id: RECEIVER });
-    await sleep(3000);
-    await fetchStates();
+    await sleep(3000); await fetchStates();
     toast(isReceiverOn() ? '✅ מגבר דלוק!' : '⚠️ בדוק מגבר', isReceiverOn() ? 'success' : 'error');
     return isReceiverOn();
 }
@@ -195,7 +151,7 @@ async function setInput(src) {
 }
 
 /* ============================================================
-   CINEMA — Allumage automatique complet
+   CINEMA — Allumage complet
    ============================================================ */
 async function ensureCinema() {
     const need = !isProjectorOn() || !isReceiverOn();
@@ -216,7 +172,7 @@ async function ensureCinema() {
 }
 
 /* ============================================================
-   SMART SOURCE — App via ADB
+   SMART SOURCE
    ============================================================ */
 async function smartSource(app) {
     if (S.busy) return;
@@ -225,17 +181,16 @@ async function smartSource(app) {
     try {
         await ensureCinema();
         await adbLaunch(app.pkg);
-        await sleep(3000);
-        await fetchStates();
+        await sleep(3000); await fetchStates();
         toast(`✅ ${app.name} — מוכן!`, 'success');
-    } catch (e) { console.error(e); toast(`⚠️ שגיאה`, 'error'); }
+    } catch (e) { console.error(e); toast('⚠️ שגיאה', 'error'); }
     unlockBusy();
 }
 
-async function smartConsole(c) {
+async function smartConsole(app) {
     if (S.busy) return;
     lockBusy();
-    toast(`🎮 ${c.name} — מפעיל...`, 'info');
+    toast(`🎮 ${app.name} — מפעיל...`, 'info');
     try {
         const tasks = [
             callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
@@ -245,19 +200,15 @@ async function smartConsole(c) {
         await Promise.all(tasks);
         await sleep(5000);
         await Promise.all([
-            setInput(c.input),
+            setInput(app.input),
             callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
         ]);
-        await sleep(2000);
-        await fetchStates();
-        toast(`✅ ${c.name} — מוכן!`, 'success');
-    } catch (e) { console.error(e); toast(`⚠️ שגיאה`, 'error'); }
+        await sleep(2000); await fetchStates();
+        toast(`✅ ${app.name} — מוכן!`, 'success');
+    } catch (e) { console.error(e); toast('⚠️ שגיאה', 'error'); }
     unlockBusy();
 }
 
-/* ============================================================
-   FREETV — Ouverture directe d'une chaîne
-   ============================================================ */
 async function openFreeTV() {
     if (S.busy) return;
     lockBusy();
@@ -265,39 +216,11 @@ async function openFreeTV() {
     try {
         await ensureCinema();
         await adbLaunch('tv.freetv.androidtv');
-        await sleep(4000);
-        await fetchStates();
+        await sleep(4000); await fetchStates();
         toast('✅ FreeTV פתוח!', 'success');
     } catch (e) { console.error(e); toast('⚠️ שגיאה', 'error'); }
     unlockBusy();
 }
-
-async function openChannel(ch) {
-    if (S.busy) return;
-    lockBusy();
-    toast(`📺 ${ch.name} — מפעיל...`, 'info');
-    try {
-        await ensureCinema();
-        let cmd = 'am force-stop tv.freetv.androidtv && sleep 1';
-        cmd += ' && monkey -p tv.freetv.androidtv -c android.intent.category.LEANBACK_LAUNCHER 1';
-        cmd += ' && sleep 7';
-        cmd += ' && input keyevent KEYCODE_DPAD_RIGHT && sleep 1';
-        cmd += ' && input keyevent KEYCODE_DPAD_DOWN && sleep 0.5';
-        cmd += ' && input keyevent KEYCODE_DPAD_CENTER && sleep 3';
-        for (let r = 0; r < ch.row; r++) cmd += ' && input keyevent KEYCODE_DPAD_DOWN && sleep 0.4';
-        for (let c = 0; c < ch.col; c++) cmd += ' && input keyevent KEYCODE_DPAD_LEFT && sleep 0.4';
-        cmd += ' && input keyevent KEYCODE_DPAD_CENTER';
-        await adb(cmd);
-        await sleep(3000);
-        await fetchStates();
-        toast(`✅ ${ch.name} — משודר!`, 'success');
-    } catch (e) { console.error(e); toast('⚠️ שגיאה', 'error'); }
-    unlockBusy();
-}
-
-async function tvChannelUp() { await adb('input keyevent KEYCODE_CHANNEL_UP'); }
-async function tvChannelDown() { await adb('input keyevent KEYCODE_CHANNEL_DOWN'); }
-async function sendDigit(d) { await adbKey(`KEYCODE_${d}`); }
 
 /* ============================================================
    SCENES
@@ -319,11 +242,10 @@ async function runScene(name) {
                 adbKey('KEYCODE_SLEEP'),
                 callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
             ]);
-            await sleep(3000);
-            await fetchStates();
+            await sleep(3000); await fetchStates();
             toast('🔴 הקולנוע כבוי', 'success');
-        } else if (name === 'ambient') {
-            toast('✨ מצב אווירה...', 'info');
+        } else if (name === 'film') {
+            toast('🎬 מצב סרט...', 'info');
             await Promise.all([
                 callSvc('light', 'turn_off', { entity_id: 'light.7b_cinema_basement_smallspot_switch' }),
                 callSvc('light', 'turn_off', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
@@ -332,12 +254,16 @@ async function runScene(name) {
                 callSvc('light', 'turn_on', { entity_id: 'light.9a_cinema_basement_posterwall_switch' }),
             ]);
             await fetchStates();
-            toast('✨ אווירה פעילה', 'success');
-        } else if (name === 'pause') {
-            toast('⏸ הפסקה...', 'info');
-            await callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' });
+            toast('🎬 מצב סרט פעיל', 'success');
+        } else if (name === 'sport') {
+            toast('⚽ מצב ספורט...', 'info');
+            await Promise.all([
+                callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' }),
+                callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_smallspot_switch' }),
+                callSvc('light', 'turn_off', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
+            ]);
             await fetchStates();
-            toast('⏸ תאורת הפסקה', 'success');
+            toast('⚽ מצב ספורט פעיל', 'success');
         }
     } catch { toast('שגיאה', 'error'); }
     unlockBusy();
@@ -353,8 +279,9 @@ async function toggleLight(id) {
 }
 
 async function coverAction(a) {
-    const svc = a === 'open' ? 'open_cover' : a === 'close' ? 'close_cover' : 'stop_cover';
+    const svc = a === 'open' ? 'open_cover' : 'close_cover';
     await callSvc('cover', svc, { entity_id: CINEMA.cover.id });
+    toast(a === 'open' ? '🎭 פותח וילון...' : '🎭 סוגר וילון...', 'info');
     setTimeout(fetchStates, 2000);
 }
 
@@ -413,9 +340,94 @@ async function toggleDev(id) {
    RENDER
    ============================================================ */
 function renderAll() {
-    renderStatusBar(); renderProjectorStatus(); renderLights();
-    renderCurtain(); renderSources(); renderAudio();
-    renderFreeTV(); renderSpeakers(); updateHero();
+    renderStatusBar(); renderPower(); renderAudio();
+    renderApps(); renderLights(); renderCurtain(); renderSpeakers();
+    renderProjectorPanel();
+}
+
+function renderPower() {
+    S.cinemaOn = isProjectorOn() || isReceiverOn();
+    const app = getShieldApp();
+    const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : null;
+
+    const btn = document.getElementById('btnPower');
+    const state = document.getElementById('powerState');
+    const playing = document.getElementById('nowPlaying');
+
+    if (btn) btn.classList.toggle('on', S.cinemaOn);
+    if (state) {
+        state.textContent = S.cinemaOn ? 'פעיל' : 'כבוי';
+        state.classList.toggle('on', S.cinemaOn);
+    }
+    if (playing) playing.textContent = S.cinemaOn && appLabel ? `🎯 ${appLabel}` : '';
+}
+
+function renderAudio() {
+    const e = S.entities[RECEIVER]; if (!e) return;
+    const hasVol = e.attr.volume_level !== undefined;
+    const vol = hasVol ? Math.round(e.attr.volume_level * 100) : S.lastVol ?? 30;
+    if (hasVol) S.lastVol = vol;
+    const muted = e.attr.is_volume_muted || false;
+    const fill = document.getElementById('volFill');
+    const knob = document.getElementById('volKnob');
+    const range = document.getElementById('volRange');
+    const mb = document.getElementById('vMute');
+    if (fill) fill.style.width = `${vol}%`;
+    if (knob) knob.style.left = `${vol}%`;
+    if (range && !S.volDragging) range.value = vol;
+    if (mb) mb.classList.toggle('muted', muted);
+}
+
+function renderApps() {
+    const g = document.getElementById('appsGrid'); if (!g) return;
+    const cur = getShieldApp();
+    g.innerHTML = APPS.map((a, i) =>
+        `<button class="app-tile ${!a.console && cur === a.pkg ? 'active' : ''}" data-idx="${i}">
+            <span class="app-e">${a.icon}</span><span class="app-n">${a.name}</span>
+        </button>`
+    ).join('');
+    g.querySelectorAll('.app-tile').forEach(t => {
+        t.addEventListener('click', () => {
+            const a = APPS[parseInt(t.dataset.idx)];
+            if (a.console) smartConsole(a);
+            else smartSource(a);
+        });
+    });
+}
+
+function renderLights() {
+    const g = document.getElementById('lightsGrid'); if (!g) return;
+    g.innerHTML = CINEMA.lights.map(l => {
+        const on = S.entities[l.id]?.state === 'on';
+        return `<div class="toggle-row ${on ? 'on' : ''}" data-id="${l.id}">
+            <span class="toggle-emoji">${l.emoji}</span>
+            <span class="toggle-name">${l.name}</span>
+            <span class="toggle-dot"></span>
+        </div>`;
+    }).join('');
+    g.querySelectorAll('.toggle-row').forEach(t => t.addEventListener('click', () => toggleLight(t.dataset.id)));
+}
+
+function renderCurtain() {
+    const st = S.entities[CINEMA.cover.id]?.state || 'unknown';
+    const b = document.getElementById('curtainBadge');
+    const lab = { open: 'פתוח', closed: 'סגור', opening: 'נפתח...', closing: 'נסגר...' };
+    if (b) { b.textContent = lab[st] || st; b.className = 'badge ' + st; }
+}
+
+function renderSpeakers() {
+    const g = document.getElementById('speakersGrid'); if (!g) return;
+    g.innerHTML = CINEMA.speakers.map(s => {
+        const e = S.entities[s.id];
+        const st = e?.state || 'unavailable';
+        const on = ['playing', 'paused', 'idle'].includes(st);
+        return `<div class="toggle-row spk ${on ? 'on' : ''}" data-id="${s.id}">
+            <span class="toggle-emoji">${s.emoji}</span>
+            <span class="toggle-name">${s.name}</span>
+            <span class="toggle-dot"></span>
+        </div>`;
+    }).join('');
+    g.querySelectorAll('.toggle-row').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
 }
 
 function renderStatusBar() {
@@ -430,14 +442,6 @@ function renderStatusBar() {
     setStatItem('statCurtain', cState === 'open', cLabels[cState] || cState);
     setStatItem('statLights', lightsOn > 0, `${lightsOn}/${CINEMA.lights.length}`);
     setStatItem('statAdb', adbState !== 'unavailable', adbState === 'unavailable' ? 'מנותק' : 'ADB');
-
-    const actEl = document.getElementById('currentActivity');
-    const app = getShieldApp();
-    const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '—';
-    if (actEl) actEl.textContent = appLabel;
-
-    const countEl = document.getElementById('lightsCount');
-    if (countEl) countEl.textContent = lightsOn > 0 ? `(${lightsOn} דלוקות)` : '';
 }
 
 function setStatItem(elId, on, text) {
@@ -447,13 +451,10 @@ function setStatItem(elId, on, text) {
     if (val) val.textContent = text;
 }
 
-function renderProjectorStatus() {
+function renderProjectorPanel() {
+    const el = document.getElementById('projectorPanel'); if (!el) return;
     const pOn = isProjectorOn(), rOn = isReceiverOn();
     const rSrc = S.entities[RECEIVER]?.attr?.source || '—';
-    const app = getShieldApp();
-    const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '';
-    const el = document.getElementById('projectorPanel'); if (!el) return;
-
     el.innerHTML = `
         <div class="proj-row">
             <div class="proj-device ${pOn ? 'on' : 'off'}">
@@ -474,9 +475,7 @@ function renderProjectorStatus() {
                 <button class="pbtn pbtn-on" data-id="${RECEIVER}" data-act="on">הפעלה</button>
                 <button class="pbtn pbtn-off" data-id="${RECEIVER}" data-act="off">כיבוי</button>
             </div>
-        </div>
-        ${appLabel ? `<div class="proj-activity">🎯 אפליקציה: <strong>${appLabel}</strong></div>` : ''}`;
-
+        </div>`;
     el.querySelectorAll('.pbtn').forEach(b => {
         b.addEventListener('click', e => {
             e.stopPropagation();
@@ -485,124 +484,17 @@ function renderProjectorStatus() {
     });
 }
 
-function renderLights() {
-    const g = document.getElementById('lightsGrid'); if (!g) return;
-    g.innerHTML = CINEMA.lights.map(l => {
-        const on = S.entities[l.id]?.state === 'on';
-        return `<div class="lt ${on ? 'on' : ''}" data-id="${l.id}"><div class="lt-e">${l.emoji}</div><div class="lt-n">${l.name}</div><div class="lt-s">${on ? 'דלוק' : 'כבוי'}</div></div>`;
-    }).join('');
-    g.querySelectorAll('.lt').forEach(t => t.addEventListener('click', () => toggleLight(t.dataset.id)));
-}
-
-function renderCurtain() {
-    const st = S.entities[CINEMA.cover.id]?.state || 'unknown';
-    const b = document.getElementById('curtainBadge');
-    const v = document.getElementById('curVis');
-    const lab = { open: 'פתוח', closed: 'סגור', opening: 'נפתח...', closing: 'נסגר...' };
-    if (b) { b.textContent = lab[st] || st; b.className = 'badge ' + st; }
-    if (v) { v.classList.remove('open', 'closed'); v.classList.add(st === 'open' || st === 'opening' ? 'open' : 'closed'); }
-}
-
-function renderSources() {
-    const g = document.getElementById('sourcesGrid'); if (!g) return;
-    const cur = getShieldApp();
-
-    const cats = [
-        { key: 'streaming', title: '📺 סטרימינג', items: APPS.filter(a => a.cat === 'streaming') },
-        { key: 'israel', title: '🇮🇱 ישראלי', items: APPS.filter(a => a.cat === 'israel' || a.cat === 'tv') },
-        { key: 'music', title: '🎵 מוזיקה', items: APPS.filter(a => a.cat === 'music') },
-        { key: 'tools', title: '🛠️ כלים', items: APPS.filter(a => a.cat === 'tools') },
-    ];
-
-    let html = '';
-    for (const cat of cats) {
-        html += `<div class="src-section-title">${cat.title}</div>`;
-        html += cat.items.map(a =>
-            `<div class="src ${cur === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
-        ).join('');
-    }
-
-    html += `<div class="src-section-title">🎮 קונסולות</div>`;
-    html += CONSOLES.map((c, i) =>
-        `<div class="src src-console" data-ci="${i}"><div class="src-e">${c.icon}</div><div class="src-n">${c.name}</div></div>`
-    ).join('');
-
-    html += `<div class="src-section-title"></div>`;
-    html += `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>`;
-
-    g.innerHTML = html;
-
-    g.querySelectorAll('.src[data-pkg]').forEach(t => {
-        t.addEventListener('click', () => {
-            const a = APPS.find(a => a.pkg === t.dataset.pkg);
-            if (a) smartSource(a);
-        });
+/* ============================================================
+   TAB NAVIGATION
+   ============================================================ */
+function switchTab(tab) {
+    S.tab = tab;
+    document.querySelectorAll('.tab-section').forEach(s => {
+        s.style.display = s.dataset.tab === tab ? '' : 'none';
     });
-    g.querySelectorAll('.src-console').forEach(t => {
-        t.addEventListener('click', () => smartConsole(CONSOLES[parseInt(t.dataset.ci)]));
+    document.querySelectorAll('.mn').forEach(b => {
+        b.classList.toggle('active', b.dataset.go === tab);
     });
-    document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
-}
-
-function renderFreeTV() {
-    const g = document.getElementById('freetvGrid'); if (!g) return;
-    g.innerHTML = TV_CHANNELS.map((ch, i) =>
-        `<div class="ftv-ch" data-chi="${i}"><span class="ftv-icon">${ch.icon}</span><span class="ftv-name">${ch.name}</span></div>`
-    ).join('');
-    g.querySelectorAll('.ftv-ch').forEach(t => {
-        t.addEventListener('click', () => openChannel(TV_CHANNELS[parseInt(t.dataset.chi)]));
-    });
-}
-
-function renderAudio() {
-    const e = S.entities[RECEIVER]; if (!e) return;
-    const hasVol = e.attr.volume_level !== undefined;
-    const vol = hasVol ? Math.round(e.attr.volume_level * 100) : S.lastVol ?? 30;
-    if (hasVol) S.lastVol = vol;
-    const muted = e.attr.is_volume_muted || false;
-    const rOn = isReceiverOn();
-    const num = document.getElementById('volNum');
-    const fill = document.getElementById('volFill');
-    const knob = document.getElementById('volKnob');
-    const range = document.getElementById('volRange');
-    const mb = document.getElementById('vMute');
-    if (num) num.textContent = !rOn ? 'כבוי' : muted ? 'MUTE' : `${vol}%`;
-    if (fill) fill.style.width = `${vol}%`;
-    if (knob) knob.style.left = `${vol}%`;
-    if (range && !S.volDragging) range.value = vol;
-    if (mb) mb.classList.toggle('muted', muted);
-}
-
-function renderSpeakers() {
-    const g = document.getElementById('speakersGrid'); if (!g) return;
-    g.innerHTML = CINEMA.speakers.map(s => {
-        const e = S.entities[s.id];
-        const st = e?.state || 'unavailable';
-        const on = ['playing', 'paused', 'idle'].includes(st);
-        const title = e?.attr?.media_title || '';
-        return `<div class="spk ${on ? 'on' : ''}" data-id="${s.id}">
-            <div class="spk-e">${s.emoji}</div><div class="spk-n">${s.name}</div>
-            <div class="spk-s">${on ? (title || 'פעיל') : 'כבוי'}</div></div>`;
-    }).join('');
-    g.querySelectorAll('.spk').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
-}
-
-function updateHero() {
-    const app = getShieldApp();
-    S.cinemaOn = isProjectorOn() || isReceiverOn();
-    const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : null;
-
-    const orb = document.getElementById('heroOrbit');
-    const sub = document.getElementById('heroSub');
-    const btn = document.getElementById('btnPower');
-    const lab = document.getElementById('powerLabel');
-    if (orb) orb.classList.toggle('on', S.cinemaOn);
-    if (sub) {
-        sub.textContent = S.cinemaOn ? `🟢 ${appLabel || 'קולנוע פעיל'}` : '⚫ קולנוע כבוי';
-        sub.classList.toggle('on', S.cinemaOn);
-    }
-    if (btn) btn.classList.toggle('on', S.cinemaOn);
-    if (lab) lab.textContent = S.cinemaOn ? 'כיבוי' : 'הפעלה';
 }
 
 /* ============================================================
@@ -641,12 +533,16 @@ function startPoll() { if (S.poll) clearInterval(S.poll); S.poll = setInterval(f
    ============================================================ */
 function initEvents() {
     document.getElementById('btnPower')?.addEventListener('click', () => runScene(S.cinemaOn ? 'cinema_off' : 'cinema_on'));
-    document.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () => { if (b.dataset.scene) runScene(b.dataset.scene); }));
+
+    document.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () => {
+        if (b.dataset.scene) runScene(b.dataset.scene);
+    }));
+
     document.getElementById('btnLOn')?.addEventListener('click', () => allLights('turn_on'));
     document.getElementById('btnLOff')?.addEventListener('click', () => allLights('turn_off'));
     document.getElementById('cOpen')?.addEventListener('click', () => coverAction('open'));
-    document.getElementById('cStop')?.addEventListener('click', () => coverAction('stop'));
     document.getElementById('cClose')?.addEventListener('click', () => coverAction('close'));
+
     document.getElementById('vDown')?.addEventListener('click', () => volStep('down'));
     document.getElementById('vUp')?.addEventListener('click', () => volStep('up'));
     document.getElementById('vMute')?.addEventListener('click', toggleMute);
@@ -657,10 +553,9 @@ function initEvents() {
         vr.addEventListener('input', e => {
             const v = parseInt(e.target.value);
             S.lastVol = v;
-            const f = document.getElementById('volFill'), k = document.getElementById('volKnob'), n = document.getElementById('volNum');
+            const f = document.getElementById('volFill'), k = document.getElementById('volKnob');
             if (f) f.style.width = `${v}%`;
             if (k) k.style.left = `${v}%`;
-            if (n) n.textContent = `${v}%`;
             clearTimeout(vt); vt = setTimeout(() => setVol(v), 300);
         });
         vr.addEventListener('mousedown', () => S.volDragging = true);
@@ -670,43 +565,15 @@ function initEvents() {
     }
 
     document.getElementById('btnRefresh')?.addEventListener('click', () => { fetchStates(); toast('🔄 מרענן...', 'info'); });
+    document.getElementById('btnOpenFreeTV')?.addEventListener('click', () => openFreeTV());
 
     document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => {
         b.style.transform = 'scale(0.85)';
-        b.style.boxShadow = '0 0 20px rgba(0,255,200,0.6)';
-        setTimeout(() => { b.style.transform = ''; b.style.boxShadow = ''; }, 200);
+        setTimeout(() => b.style.transform = '', 200);
         sendCmd(b.dataset.cmd);
     }));
 
-    document.getElementById('kbToggle')?.addEventListener('click', () => document.getElementById('kbPanel')?.classList.toggle('hidden'));
-    document.getElementById('kbSend')?.addEventListener('click', () => {
-        const inp = document.getElementById('kbInput');
-        if (inp?.value) { adbText(inp.value); inp.value = ''; }
-    });
-    document.getElementById('kbInput')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { adbText(e.target.value); e.target.value = ''; }
-    });
-
-    document.getElementById('btnOpenFreeTV')?.addEventListener('click', () => openFreeTV());
-    document.getElementById('btnChUp')?.addEventListener('click', () => tvChannelUp());
-    document.getElementById('btnChDown')?.addEventListener('click', () => tvChannelDown());
-
-    document.querySelectorAll('.numpad-btn[data-digit]').forEach(b => b.addEventListener('click', () => {
-        b.style.transform = 'scale(0.85)';
-        setTimeout(() => b.style.transform = '', 150);
-        sendDigit(b.dataset.digit);
-    }));
-
-    document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => {
-        document.querySelectorAll('.mn').forEach(x => x.classList.remove('active'));
-        b.classList.add('active');
-        const map = {
-            hero: 'pcHero', sources: 'sourcesGrid', freetv: 'freetvGrid',
-            remote: 'remoteCard', audio: 'volNum', lights: 'lightsGrid',
-        };
-        const t = map[b.dataset.go];
-        if (t) document.getElementById(t)?.closest('.glass-card, section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }));
+    document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.go)));
 
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) clearInterval(S.poll);
@@ -720,6 +587,7 @@ function initEvents() {
 async function init() {
     showView('loader');
     initEvents();
+    switchTab('cinema');
     const ok = await fetchStates();
     showView('app');
     if (ok) startPoll();
