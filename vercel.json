@@ -1,6 +1,10 @@
 {
+    "functions": {
+        "api/ha.js": { "maxDuration": 15 }
+    },
     "rewrites": [
-        { "source": "/(.*)", "destination": "/index.html" }
+        { "source": "/api/ha", "destination": "/api/ha" },
+        { "source": "/((?!api).*)", "destination": "/index.html" }
     ],
     "headers": [
         {

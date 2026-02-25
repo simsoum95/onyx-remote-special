@@ -1,12 +1,8 @@
 /**
  * ONYX REMOTE SPECIAL — PWA Standalone
- * Connexion directe à Home Assistant via REST API + Token.
- * Écran de setup au premier lancement, config en localStorage.
+ * Toutes les requêtes passent par /api/ha (proxy Vercel) — zéro CORS.
  */
 
-/* ============================================================
-   CINEMA CONFIG
-   ============================================================ */
 const CINEMA = {
     lights: [
         { id: 'light.7b_cinema_basement_smallspot_switch', name: 'ספוטים', emoji: '💡' },
@@ -39,39 +35,31 @@ const ALL_IDS = [
     ...CINEMA.players.map(p => p.id),
 ];
 
-/* ============================================================
-   STATE
-   ============================================================ */
-const S = {
-    entities: {},
-    cinemaOn: false,
-    busy: false,
-    poll: null,
-    haUrl: '',
-    haToken: '',
-};
+const S = { entities: {}, cinemaOn: false, busy: false, poll: null };
 
 /* ============================================================
-   HA API — Appels directs avec Bearer Token
+   API — Toutes les requêtes passent par le proxy Vercel
    ============================================================ */
-function haHeaders() {
-    return {
-        'Authorization': `Bearer ${S.haToken}`,
-        'Content-Type': 'application/json',
-    };
+async function haGet(path) {
+    const res = await fetch(`/api/ha?path=${encodeURIComponent(path)}`);
+    if (!res.ok) throw new Error(`${res.status}`);
+    return res.json();
 }
 
-async function haFetch(path, opts = {}) {
-    const url = `${S.haUrl}${path}`;
-    const res = await fetch(url, { ...opts, headers: { ...haHeaders(), ...(opts.headers || {}) } });
-    if (!res.ok) throw new Error(`HA ${res.status}`);
+async function haPost(path, body) {
+    const res = await fetch(`/api/ha?path=${encodeURIComponent(path)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
     return res.json();
 }
 
 async function fetchStates() {
     try {
-        const states = await haFetch('/api/states');
-        for (const s of states) {
+        const all = await haGet('/api/states');
+        for (const s of all) {
             if (ALL_IDS.includes(s.entity_id)) {
                 S.entities[s.entity_id] = { state: s.state, attr: s.attributes || {} };
             }
@@ -80,45 +68,20 @@ async function fetchStates() {
         renderAll();
         return true;
     } catch (e) {
-        console.error('[Onyx] fetch states error:', e);
+        console.error('[Onyx] fetch error:', e);
         setOnline(false);
         return false;
     }
 }
 
-async function callService(domain, service, data = {}) {
+async function callSvc(domain, service, data) {
     try {
-        await haFetch(`/api/services/${domain}/${service}`, {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
+        await haPost(`/api/services/${domain}/${service}`, data);
         return true;
     } catch (e) {
         console.error('[Onyx] service error:', e);
-        toast('שגיאת תקשורת', 'error');
         return false;
     }
-}
-
-async function callWithRetry(domain, service, entityId, extra = {}, retries = 3) {
-    const data = { entity_id: entityId, ...extra };
-    for (let i = 1; i <= retries; i++) {
-        const ok = await callService(domain, service, data);
-        if (!ok) continue;
-        await sleep(2000);
-        await fetchStates();
-        const st = S.entities[entityId]?.state;
-        if (isExpected(st, service)) return true;
-        if (i < retries) await sleep(1500);
-    }
-    return false;
-}
-
-function isExpected(state, service) {
-    if (!state) return false;
-    if (service.includes('turn_on') || service.includes('open')) return ['on', 'open', 'opening', 'playing', 'idle', 'paused'].includes(state);
-    if (service.includes('turn_off') || service.includes('close')) return ['off', 'closed', 'closing', 'standby', 'unavailable'].includes(state);
-    return true;
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -133,48 +96,50 @@ async function runScene(name) {
     if (btn) btn.classList.add('loading');
     toast(sceneMsg(name, 'go'), 'info');
 
-    let ok = true;
     try {
         if (name === 'cinema_on') {
-            const lightOff = CINEMA.lights.map(l => callService('light', 'turn_off', { entity_id: l.id }));
-            await Promise.all(lightOff);
-            await callService('cover', 'close_cover', { entity_id: CINEMA.cover.id });
-            const pOk = await callWithRetry('media_player', 'turn_on', CINEMA.projector.id);
-            const rOk = await callWithRetry('media_player', 'turn_on', CINEMA.receiver.id);
-            ok = pOk && rOk;
+            await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
+            await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
+            await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
+            await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
+            await sleep(3000);
+            await fetchStates();
+            const pOk = ['on','playing','idle'].includes(S.entities[CINEMA.projector.id]?.state);
+            if (!pOk) { await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id }); await sleep(2000); }
+            const rOk = ['on','playing','idle'].includes(S.entities[CINEMA.receiver.id]?.state);
+            if (!rOk) { await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id }); await sleep(2000); }
         } else if (name === 'cinema_off') {
-            await callService('media_player', 'turn_off', { entity_id: CINEMA.projector.id });
-            await callService('media_player', 'turn_off', { entity_id: CINEMA.receiver.id });
+            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.projector.id });
+            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.receiver.id });
             await sleep(1000);
-            await callService('cover', 'open_cover', { entity_id: CINEMA.cover.id });
-            await callService('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
+            await callSvc('cover', 'open_cover', { entity_id: CINEMA.cover.id });
+            await callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
         } else if (name === 'ambient') {
             await Promise.all([
-                callService('light', 'turn_off', { entity_id: 'light.7b_cinema_basement_smallspot_switch' }),
-                callService('light', 'turn_off', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
-                callService('light', 'turn_off', { entity_id: 'light.8a_cinema_basement_wall_switch' }),
-                callService('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' }),
-                callService('light', 'turn_on', { entity_id: 'light.9a_cinema_basement_posterwall_switch' }),
+                callSvc('light', 'turn_off', { entity_id: 'light.7b_cinema_basement_smallspot_switch' }),
+                callSvc('light', 'turn_off', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
+                callSvc('light', 'turn_off', { entity_id: 'light.8a_cinema_basement_wall_switch' }),
+                callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' }),
+                callSvc('light', 'turn_on', { entity_id: 'light.9a_cinema_basement_posterwall_switch' }),
             ]);
-            await callService('cover', 'open_cover', { entity_id: CINEMA.cover.id });
+            await callSvc('cover', 'open_cover', { entity_id: CINEMA.cover.id });
         } else if (name === 'pause') {
-            await callService('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' });
+            await callSvc('light', 'turn_on', { entity_id: 'light.7b_cinema_basement_led_switch' });
         }
         await fetchStates();
-        toast(sceneMsg(name, ok ? 'ok' : 'fail'), ok ? 'success' : 'error');
-    } catch {
-        toast('שגיאה בהפעלה', 'error');
-    }
+        toast(sceneMsg(name, 'ok'), 'success');
+    } catch { toast('שגיאה בהפעלה', 'error'); }
+
     S.busy = false;
     if (btn) btn.classList.remove('loading');
 }
 
 function sceneMsg(s, t) {
     const M = {
-        cinema_on:  { go: '🎬 מפעיל מצב קולנוע...', ok: '🎬 קולנוע פעיל!', fail: '⚠️ חלק מהמכשירים לא הגיבו' },
-        cinema_off: { go: '🔴 מכבה...', ok: '🔴 הקולנוע כבוי', fail: '⚠️ שגיאה' },
-        ambient:    { go: '✨ מצב אווירה...', ok: '✨ אווירה פעילה', fail: '⚠️ שגיאה' },
-        pause:      { go: '⏸ הפסקה...', ok: '⏸ תאורת הפסקה', fail: '⚠️ שגיאה' },
+        cinema_on:  { go:'🎬 מפעיל קולנוע...', ok:'🎬 קולנוע פעיל!' },
+        cinema_off: { go:'🔴 מכבה...', ok:'🔴 הקולנוע כבוי' },
+        ambient:    { go:'✨ מצב אווירה...', ok:'✨ אווירה פעילה' },
+        pause:      { go:'⏸ הפסקה...', ok:'⏸ תאורת הפסקה' },
     };
     return M[s]?.[t] || s;
 }
@@ -184,45 +149,45 @@ function sceneMsg(s, t) {
    ============================================================ */
 async function toggleLight(id) {
     const svc = S.entities[id]?.state === 'on' ? 'turn_off' : 'turn_on';
-    await callService('light', svc, { entity_id: id });
+    await callSvc('light', svc, { entity_id: id });
     setTimeout(fetchStates, 1200);
 }
 
 async function coverAction(a) {
     const svc = a === 'open' ? 'open_cover' : a === 'close' ? 'close_cover' : 'stop_cover';
-    await callService('cover', svc, { entity_id: CINEMA.cover.id });
+    await callSvc('cover', svc, { entity_id: CINEMA.cover.id });
     setTimeout(fetchStates, 2000);
 }
 
 async function toggleDev(id) {
-    const on = ['on', 'playing', 'idle', 'paused'].includes(S.entities[id]?.state);
-    await callService('media_player', on ? 'turn_off' : 'turn_on', { entity_id: id });
+    const on = ['on','playing','idle','paused'].includes(S.entities[id]?.state);
+    await callSvc('media_player', on ? 'turn_off' : 'turn_on', { entity_id: id });
     setTimeout(fetchStates, 3000);
 }
 
 async function fireSource(id) {
-    await callService('script', 'turn_on', { entity_id: id });
+    await callSvc('script', 'turn_on', { entity_id: id });
     toast('🎯 מקור הופעל', 'success');
     setTimeout(fetchStates, 3000);
 }
 
 async function volStep(dir) {
-    await callService('media_player', dir === 'up' ? 'volume_up' : 'volume_down', { entity_id: CINEMA.receiver.id });
+    await callSvc('media_player', dir === 'up' ? 'volume_up' : 'volume_down', { entity_id: CINEMA.receiver.id });
     setTimeout(fetchStates, 800);
 }
 
 async function setVol(v) {
-    await callService('media_player', 'volume_set', { entity_id: CINEMA.receiver.id, volume_level: v / 100 });
+    await callSvc('media_player', 'volume_set', { entity_id: CINEMA.receiver.id, volume_level: v / 100 });
 }
 
 async function toggleMute() {
     const m = S.entities[CINEMA.receiver.id]?.attr?.is_volume_muted || false;
-    await callService('media_player', 'volume_mute', { entity_id: CINEMA.receiver.id, is_volume_muted: !m });
+    await callSvc('media_player', 'volume_mute', { entity_id: CINEMA.receiver.id, is_volume_muted: !m });
     setTimeout(fetchStates, 800);
 }
 
 async function allLights(svc) {
-    await Promise.all(CINEMA.lights.map(l => callService('light', svc, { entity_id: l.id })));
+    await Promise.all(CINEMA.lights.map(l => callSvc('light', svc, { entity_id: l.id })));
     toast(svc === 'turn_on' ? '💡 הכל דלוק' : '🌑 הכל כבוי', 'success');
     setTimeout(fetchStates, 1500);
 }
@@ -231,6 +196,7 @@ async function allLights(svc) {
    RENDER
    ============================================================ */
 function renderAll() {
+    renderStatusBar();
     renderLights();
     renderCurtain();
     renderSources();
@@ -239,23 +205,50 @@ function renderAll() {
     updateHero();
 }
 
+function isOn(id) { return ['on','playing','idle','paused'].includes(S.entities[id]?.state); }
+
+function renderStatusBar() {
+    const pOn = isOn(CINEMA.projector.id);
+    const rOn = isOn(CINEMA.receiver.id);
+    const cState = S.entities[CINEMA.cover.id]?.state || 'unknown';
+    const lightsOn = CINEMA.lights.filter(l => S.entities[l.id]?.state === 'on').length;
+    const lightsTotal = CINEMA.lights.length;
+
+    setStatItem('statProjector', pOn, pOn ? 'דלוק' : 'כבוי');
+    setStatItem('statReceiver', rOn, rOn ? 'דלוק' : 'כבוי');
+    const cLabels = { open:'פתוח', closed:'סגור', opening:'נפתח', closing:'נסגר' };
+    setStatItem('statCurtain', cState === 'open', cLabels[cState] || cState);
+    setStatItem('statLights', lightsOn > 0, `${lightsOn}/${lightsTotal}`);
+
+    const countEl = document.getElementById('lightsCount');
+    if (countEl) countEl.textContent = lightsOn > 0 ? `(${lightsOn} דלוקות)` : '';
+}
+
+function setStatItem(elId, on, text) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.classList.toggle('on', on);
+    el.classList.toggle('off', !on);
+    const val = el.querySelector('.stat-val');
+    if (val) val.textContent = text;
+}
+
 function renderLights() {
     const g = document.getElementById('lightsGrid'); if (!g) return;
     g.innerHTML = CINEMA.lights.map(l => {
         const on = S.entities[l.id]?.state === 'on';
-        return `<div class="lt ${on ? 'on' : ''}" data-id="${l.id}"><div class="lt-e">${l.emoji}</div><div class="lt-n">${l.name}</div><div class="lt-s">${on ? 'ON' : 'OFF'}</div></div>`;
+        return `<div class="lt ${on ? 'on' : ''}" data-id="${l.id}"><div class="lt-e">${l.emoji}</div><div class="lt-n">${l.name}</div><div class="lt-s">${on ? 'דלוק' : 'כבוי'}</div></div>`;
     }).join('');
     g.querySelectorAll('.lt').forEach(t => t.addEventListener('click', () => toggleLight(t.dataset.id)));
 }
 
 function renderCurtain() {
-    const e = S.entities[CINEMA.cover.id];
-    const st = e?.state || 'unknown';
+    const st = S.entities[CINEMA.cover.id]?.state || 'unknown';
     const b = document.getElementById('curtainBadge');
     const v = document.getElementById('curVis');
-    const lab = { open: 'פתוח', closed: 'סגור', opening: 'נפתח...', closing: 'נסגר...' };
+    const lab = { open:'פתוח', closed:'סגור', opening:'נפתח...', closing:'נסגר...' };
     if (b) { b.textContent = lab[st] || st; b.className = 'badge ' + st; }
-    if (v) { v.classList.remove('open', 'closed'); v.classList.add(st === 'open' || st === 'opening' ? 'open' : 'closed'); }
+    if (v) { v.classList.remove('open','closed'); v.classList.add(st === 'open' || st === 'opening' ? 'open' : 'closed'); }
 }
 
 function renderSources() {
@@ -286,18 +279,18 @@ function renderAudio() {
 
 function renderDevices() {
     const g = document.getElementById('devicesGrid'); if (!g) return;
-    const devs = [{ ...CINEMA.projector, emoji: '📽️' }, { ...CINEMA.receiver, emoji: '🔊' }, ...CINEMA.players];
+    const devs = [{ ...CINEMA.projector, emoji:'📽️' }, { ...CINEMA.receiver, emoji:'🔊' }, ...CINEMA.players];
     g.innerHTML = devs.map(d => {
         const st = S.entities[d.id]?.state || 'unavailable';
-        const on = ['on', 'playing', 'idle', 'paused'].includes(st);
-        return `<div class="dev ${on ? 'on' : 'off'}" data-id="${d.id}"><div class="dev-e">${d.emoji}</div><div class="dev-n">${d.name}</div><div class="dev-s">${on ? 'ON' : st === 'unavailable' ? '—' : 'OFF'}</div></div>`;
+        const on = ['on','playing','idle','paused'].includes(st);
+        return `<div class="dev ${on ? 'on' : 'off'}" data-id="${d.id}"><div class="dev-e">${d.emoji}</div><div class="dev-n">${d.name}</div><div class="dev-s">${on ? 'דלוק' : st === 'unavailable' ? '—' : 'כבוי'}</div></div>`;
     }).join('');
     g.querySelectorAll('.dev').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
 }
 
 function updateHero() {
-    const pOn = ['on', 'playing', 'idle'].includes(S.entities[CINEMA.projector.id]?.state);
-    const rOn = ['on', 'playing', 'idle'].includes(S.entities[CINEMA.receiver.id]?.state);
+    const pOn = isOn(CINEMA.projector.id);
+    const rOn = isOn(CINEMA.receiver.id);
     const cCl = S.entities[CINEMA.cover.id]?.state === 'closed';
     const lOff = CINEMA.lights.every(l => { const e = S.entities[l.id]; return !e || e.state === 'off' || e.state === 'unavailable'; });
     S.cinemaOn = pOn && rOn && cCl && lOff;
@@ -307,26 +300,35 @@ function updateHero() {
     const btn = document.getElementById('btnPower');
     const lab = document.getElementById('powerLabel');
     if (orb) orb.classList.toggle('on', S.cinemaOn);
-    if (sub) { sub.textContent = S.cinemaOn ? 'פעיל' : 'מוכן'; sub.classList.toggle('on', S.cinemaOn); }
+    if (sub) { sub.textContent = S.cinemaOn ? '🟢 פעיל' : 'מוכן'; sub.classList.toggle('on', S.cinemaOn); }
     if (btn) btn.classList.toggle('on', S.cinemaOn);
     if (lab) lab.textContent = S.cinemaOn ? 'כיבוי' : 'הפעלה';
+
+    const hlP = document.getElementById('hlProjector');
+    const hlR = document.getElementById('hlReceiver');
+    const hlC = document.getElementById('hlCurtain');
+    const hlL = document.getElementById('hlLights');
+    const lightsOn = CINEMA.lights.filter(l => S.entities[l.id]?.state === 'on').length;
+    const cState = S.entities[CINEMA.cover.id]?.state;
+    const cLabels = { open:'פתוח', closed:'סגור', opening:'נפתח', closing:'נסגר' };
+
+    if (hlP) { hlP.textContent = pOn ? '🟢 דלוק' : '🔴 כבוי'; hlP.className = 'hl-val ' + (pOn ? 'hl-on' : 'hl-off'); }
+    if (hlR) { hlR.textContent = rOn ? '🟢 דלוק' : '🔴 כבוי'; hlR.className = 'hl-val ' + (rOn ? 'hl-on' : 'hl-off'); }
+    if (hlC) { hlC.textContent = cLabels[cState] || '—'; hlC.className = 'hl-val ' + (cState === 'closed' ? 'hl-on' : 'hl-off'); }
+    if (hlL) { hlL.textContent = lightsOn === 0 ? '🟢 הכל כבוי' : `🟡 ${lightsOn} דלוקות`; hlL.className = 'hl-val ' + (lightsOn === 0 ? 'hl-on' : 'hl-warn'); }
 }
 
 /* ============================================================
-   TOASTS
+   UI
    ============================================================ */
 function toast(msg, type = 'info') {
     const c = document.getElementById('toasts'); if (!c) return;
     const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.textContent = msg;
+    t.className = `toast ${type}`; t.textContent = msg;
     c.appendChild(t);
     setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 3000);
 }
 
-/* ============================================================
-   UI UTILS
-   ============================================================ */
 function setOnline(on) {
     const d = document.getElementById('hdrDot');
     const l = document.getElementById('hdrLabel');
@@ -335,65 +337,11 @@ function setOnline(on) {
 }
 
 function showView(id) {
-    ['setup', 'loader', 'app'].forEach(v => document.getElementById(v)?.classList.add('hidden'));
+    ['loader', 'app'].forEach(v => document.getElementById(v)?.classList.add('hidden'));
     document.getElementById(id)?.classList.remove('hidden');
 }
 
-function startPoll() { if (S.poll) clearInterval(S.poll); S.poll = setInterval(fetchStates, 4000); }
-function stopPoll() { if (S.poll) { clearInterval(S.poll); S.poll = null; } }
-
-/* ============================================================
-   SETUP — Premier lancement
-   ============================================================ */
-function loadConfig() {
-    S.haUrl = localStorage.getItem('onyx_ha_url') || 'https://na4kp2cjkejmeprgklgswxssuihm0ngr.ui.nabu.casa';
-    S.haToken = localStorage.getItem('onyx_ha_token') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjNDUxY2M1NmU0OTc0MTIxOTg5MDE2ZDAxZTQyYjkxYyIsImlhdCI6MTc3MjAxOTIzOCwiZXhwIjoyMDg3Mzc5MjM4fQ.J4p3A3Tj3Nil_n3l9nsD7RMxPa_6sDqlyrhk9HyZyKg';
-}
-
-function saveConfig(url, token) {
-    S.haUrl = url.replace(/\/+$/, '');
-    S.haToken = token;
-    localStorage.setItem('onyx_ha_url', S.haUrl);
-    localStorage.setItem('onyx_ha_token', S.haToken);
-}
-
-async function testConnection() {
-    try {
-        const res = await fetch(`${S.haUrl}/api/`, { headers: haHeaders() });
-        return res.ok;
-    } catch { return false; }
-}
-
-function initSetup() {
-    const btn = document.getElementById('btnSetupConnect');
-    const errEl = document.getElementById('setupError');
-
-    btn?.addEventListener('click', async () => {
-        const url = document.getElementById('inputUrl')?.value?.trim();
-        const token = document.getElementById('inputToken')?.value?.trim();
-        if (!url || !token) { errEl.textContent = 'נא למלא את כל השדות'; errEl.classList.remove('hidden'); return; }
-        errEl.classList.add('hidden');
-        btn.textContent = 'מתחבר...';
-        btn.disabled = true;
-        saveConfig(url, token);
-        const ok = await testConnection();
-        if (ok) {
-            showView('loader');
-            await launchApp();
-        } else {
-            errEl.textContent = 'שגיאת חיבור — בדוק את הכתובת והטוקן';
-            errEl.classList.remove('hidden');
-            btn.innerHTML = '<span class="setup-btn-glow"></span><span>התחבר</span>';
-            btn.disabled = false;
-        }
-    });
-
-    document.getElementById('btnSettings')?.addEventListener('click', () => {
-        localStorage.removeItem('onyx_ha_url');
-        localStorage.removeItem('onyx_ha_token');
-        location.reload();
-    });
-}
+function startPoll() { if (S.poll) clearInterval(S.poll); S.poll = setInterval(fetchStates, 5000); }
 
 /* ============================================================
    EVENTS
@@ -413,14 +361,11 @@ function initEvents() {
     let vt;
     document.getElementById('volRange')?.addEventListener('input', e => {
         const v = parseInt(e.target.value);
-        const f = document.getElementById('volFill');
-        const k = document.getElementById('volKnob');
-        const n = document.getElementById('volNum');
+        const f = document.getElementById('volFill'), k = document.getElementById('volKnob'), n = document.getElementById('volNum');
         if (f) f.style.width = `${v}%`;
         if (k) k.style.right = `${v}%`;
         if (n) n.textContent = `${v}%`;
-        clearTimeout(vt);
-        vt = setTimeout(() => setVol(v), 300);
+        clearTimeout(vt); vt = setTimeout(() => setVol(v), 300);
     });
 
     document.getElementById('btnRefresh')?.addEventListener('click', () => { fetchStates(); toast('🔄 מרענן...', 'info'); });
@@ -428,35 +373,31 @@ function initEvents() {
     document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.mn').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
-        const map = { hero: 'pcHero', lights: 'lightsGrid', sources: 'sourcesGrid', audio: 'volNum' };
-        const target = map[b.dataset.go];
-        if (target) document.getElementById(target)?.closest('.glass-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const map = { hero:'pcHero', lights:'lightsGrid', sources:'sourcesGrid', audio:'volNum' };
+        const t = map[b.dataset.go];
+        if (t) document.getElementById(t)?.closest('.glass-card')?.scrollIntoView({ behavior:'smooth', block:'start' });
     }));
 
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) stopPoll();
+        if (document.hidden) clearInterval(S.poll);
         else { fetchStates(); startPoll(); }
     });
-}
-
-/* ============================================================
-   LAUNCH
-   ============================================================ */
-async function launchApp() {
-    initEvents();
-    await fetchStates();
-    showView('app');
-    startPoll();
 }
 
 /* ============================================================
    INIT
    ============================================================ */
 async function init() {
-    loadConfig();
     showView('loader');
-    saveConfig(S.haUrl, S.haToken);
-    await launchApp();
+    initEvents();
+    const ok = await fetchStates();
+    showView('app');
+    if (ok) {
+        startPoll();
+    } else {
+        toast('⚠️ שגיאת חיבור — בודק שוב...', 'error');
+        setTimeout(async () => { await fetchStates(); startPoll(); }, 3000);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

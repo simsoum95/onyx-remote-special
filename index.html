@@ -6,7 +6,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#050510">
-    <meta name="description" content="Onyx Remote — שלט קולנוע ביתי חכם">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.svg">
     <title>ONYX REMOTE</title>
@@ -15,49 +14,16 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Fond animé -->
-    <div class="bg-fx">
-        <div class="bg-grid"></div>
-        <div class="bg-orb orb1"></div>
-        <div class="bg-orb orb2"></div>
-        <div class="bg-orb orb3"></div>
-    </div>
+    <div class="bg-fx"><div class="bg-grid"></div><div class="bg-orb orb1"></div><div class="bg-orb orb2"></div><div class="bg-orb orb3"></div></div>
 
-    <!-- Setup masqué — connexion automatique -->
-    <div id="setup" style="display:none!important">
-        <div class="setup-card">
-            <div class="setup-rings">
-                <div class="s-ring s-ring1"></div>
-                <div class="s-ring s-ring2"></div>
-            </div>
-            <div class="setup-logo">ONYX</div>
-            <div class="setup-sub">שלט קולנוע חכם</div>
-            <div class="setup-form">
-                <label class="setup-label">כתובת Home Assistant</label>
-                <input class="setup-input" id="inputUrl" type="url" placeholder="https://xxxxx.ui.nabu.casa" autocomplete="url">
-                <label class="setup-label">טוקן גישה (Long-Lived Token)</label>
-                <input class="setup-input" id="inputToken" type="password" placeholder="eyJhbGciOi..." autocomplete="off">
-                <button class="setup-btn" id="btnSetupConnect">
-                    <span class="setup-btn-glow"></span>
-                    <span>התחבר</span>
-                </button>
-                <div class="setup-error hidden" id="setupError"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== LOADER ==================== -->
-    <div id="loader" class="hidden">
-        <div class="loader-rings">
-            <div class="l-ring l1"></div>
-            <div class="l-ring l2"></div>
-            <div class="l-ring l3"></div>
-        </div>
+    <!-- Loader -->
+    <div id="loader">
+        <div class="loader-rings"><div class="l-ring l1"></div><div class="l-ring l2"></div><div class="l-ring l3"></div></div>
         <div class="loader-text">ONYX</div>
         <div class="loader-sub">מתחבר לקולנוע...</div>
     </div>
 
-    <!-- ==================== APP ==================== -->
+    <!-- App -->
     <div id="app" class="hidden">
         <!-- Header -->
         <header id="header">
@@ -74,17 +40,42 @@
                     <button class="hdr-btn" id="btnRefresh" title="רענן">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
                     </button>
-                    <button class="hdr-btn" id="btnSettings" title="הגדרות">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    </button>
                 </div>
             </div>
         </header>
 
-        <!-- ============ PC LAYOUT (>1024px) ============ -->
+        <!-- STATUS BAR — Vue rapide de tout le système -->
+        <div class="status-bar" id="statusBar">
+            <div class="stat-item" id="statProjector">
+                <span class="stat-dot"></span>
+                <span class="stat-icon">📽️</span>
+                <span class="stat-label">מקרן</span>
+                <span class="stat-val">—</span>
+            </div>
+            <div class="stat-item" id="statReceiver">
+                <span class="stat-dot"></span>
+                <span class="stat-icon">🔊</span>
+                <span class="stat-label">מגבר</span>
+                <span class="stat-val">—</span>
+            </div>
+            <div class="stat-item" id="statCurtain">
+                <span class="stat-dot"></span>
+                <span class="stat-icon">🎭</span>
+                <span class="stat-label">וילון</span>
+                <span class="stat-val">—</span>
+            </div>
+            <div class="stat-item" id="statLights">
+                <span class="stat-dot"></span>
+                <span class="stat-icon">💡</span>
+                <span class="stat-label">תאורה</span>
+                <span class="stat-val">—</span>
+            </div>
+        </div>
+
+        <!-- Main content -->
         <main id="mainPC" class="main-pc">
             <div class="pc-col pc-right">
-                <!-- Cinema Mode -->
+                <!-- HERO Cinema Mode -->
                 <div class="glass-card pc-hero" id="pcHero">
                     <div class="hero-aura"></div>
                     <div class="hero-core">
@@ -93,6 +84,13 @@
                         </div>
                         <div class="hero-title">מצב קולנוע</div>
                         <div class="hero-sub" id="heroSub">מוכן</div>
+                        <!-- Live summary -->
+                        <div class="hero-live" id="heroLive">
+                            <div class="hero-live-row"><span>📽️ מקרן:</span><span id="hlProjector" class="hl-val">—</span></div>
+                            <div class="hero-live-row"><span>🔊 מגבר:</span><span id="hlReceiver" class="hl-val">—</span></div>
+                            <div class="hero-live-row"><span>🎭 וילון:</span><span id="hlCurtain" class="hl-val">—</span></div>
+                            <div class="hero-live-row"><span>💡 תאורות:</span><span id="hlLights" class="hl-val">—</span></div>
+                        </div>
                         <button class="hero-power" id="btnPower">
                             <span class="power-glow"></span>
                             <span id="powerLabel">הפעלה</span>
@@ -125,7 +123,7 @@
                 <!-- Lights -->
                 <div class="glass-card">
                     <div class="card-hdr">
-                        <div><span class="card-ico">💡</span><span>תאורה</span></div>
+                        <div><span class="card-ico">💡</span><span>תאורה</span><span class="lights-count" id="lightsCount"></span></div>
                         <div class="card-acts">
                             <button class="act-chip" id="btnLOn">הכל דלוק</button>
                             <button class="act-chip act-off" id="btnLOff">הכל כבוי</button>
@@ -167,7 +165,6 @@
             <button class="mn" data-go="audio"><span class="mn-i">🔊</span><span>שמע</span></button>
         </nav>
 
-        <!-- Toasts -->
         <div id="toasts"></div>
     </div>
 
