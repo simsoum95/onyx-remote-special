@@ -63,7 +63,20 @@ const ALL_IDS = [
     HARMONY,
 ];
 
-const S = { entities: {}, cinemaOn: false, busy: false, poll: null, lastVol: 30, volDragging: false };
+const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false };
+
+function lockBusy() {
+    S.busy = true;
+    setBusy(true);
+    clearTimeout(S.busyTimer);
+    S.busyTimer = setTimeout(() => { S.busy = false; setBusy(false); toast('🔓 נעילה שוחררה', 'info'); }, 45000);
+}
+
+function unlockBusy() {
+    S.busy = false;
+    setBusy(false);
+    clearTimeout(S.busyTimer);
+}
 
 /* ============================================================
    API
@@ -176,8 +189,7 @@ async function stopHarmony() {
    ============================================================ */
 async function runScene(name) {
     if (S.busy) return;
-    S.busy = true;
-    setBusy(true);
+    lockBusy();
 
     try {
         if (name === 'cinema_on') {
@@ -207,8 +219,7 @@ async function runScene(name) {
         }
     } catch { toast('שגיאה בהפעלה', 'error'); }
 
-    S.busy = false;
-    setBusy(false);
+    unlockBusy();
 }
 
 /* ============================================================
@@ -216,8 +227,7 @@ async function runScene(name) {
    ============================================================ */
 async function smartSource(activityName, label, extra) {
     if (S.busy) return;
-    S.busy = true;
-    setBusy(true);
+    lockBusy();
     toast(`🎬 ${label} — מפעיל...`, 'info');
 
     try {
@@ -226,7 +236,15 @@ async function smartSource(activityName, label, extra) {
             callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
         ]);
 
-        const ok = await startHarmonyActivity(activityName);
+        const alreadyActive = getCurrentActivity() === activityName;
+
+        if (alreadyActive) {
+            toast(`🔄 ${label} — relance...`, 'info');
+            await callSvc('remote', 'turn_on', { entity_id: HARMONY, activity: activityName });
+            await sleep(3000);
+        } else {
+            await startHarmonyActivity(activityName);
+        }
 
         if (extra?.ps5) {
             toast('🎮 מדליק PS5...', 'info');
@@ -243,22 +261,18 @@ async function smartSource(activityName, label, extra) {
             });
         }
 
-        if (!ok) {
+        if (!alreadyActive && !isProjectorOn()) {
             await sleep(3000);
-            await fetchStates();
-            if (!isProjectorOn()) {
-                await callSvc('remote', 'send_command', {
-                    entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
-                });
-            }
+            await callSvc('remote', 'send_command', {
+                entity_id: HARMONY, device: HARMONY_DEVICES.projector, command: 'PowerOn',
+            });
         }
 
         await fetchStates();
         toast(`✅ ${label} — מוכן!`, 'success');
     } catch { toast('שגיאה', 'error'); }
 
-    S.busy = false;
-    setBusy(false);
+    unlockBusy();
 }
 
 /* ============================================================
@@ -319,7 +333,9 @@ async function devOff(id) {
 }
 
 async function toggleDev(id) {
-    isOn(id) ? devOff(id) : devOn(id);
+    try {
+        isOn(id) ? await devOff(id) : await devOn(id);
+    } catch { toast('⚠️ שגיאה בהפעלה', 'error'); }
 }
 
 async function volStep(dir) {
