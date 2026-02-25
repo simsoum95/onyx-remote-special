@@ -97,8 +97,42 @@ async function callSvc(domain, service, data) {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function isOn(id) { return ['on','playing','idle','paused'].includes(S.entities[id]?.state); }
 
+const MAX_RETRIES = 3;
+const VERIFY_DELAY = 2000;
+const RETRY_DELAY = 2500;
+
 /* ============================================================
-   CINEMA ON — Séquence complète d'allumage
+   APPEL AVEC RETRY TRIPLE — même logique que Onyx Home
+   ============================================================ */
+async function callWithRetry(domain, service, entityId, data, expectedStates) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        toast(`⚡ ${entityId.split('.')[1]} — ניסיון ${attempt}/${MAX_RETRIES}...`, 'info');
+
+        await callSvc(domain, service, { entity_id: entityId, ...data });
+        await sleep(VERIFY_DELAY);
+
+        await fetchStates();
+        const state = S.entities[entityId]?.state;
+
+        if (expectedStates.includes(state)) {
+            toast(`✅ ${entityId.split('.')[1]} → ${state}`, 'success');
+            return true;
+        }
+
+        console.warn(`[Onyx] ${entityId}: ${state} ≠ ${expectedStates} (attempt ${attempt}/${MAX_RETRIES})`);
+
+        if (attempt < MAX_RETRIES) {
+            toast(`⚠️ לא הצליח, מנסה שוב...`, 'error');
+            await sleep(RETRY_DELAY);
+        }
+    }
+
+    toast(`❌ ${entityId.split('.')[1]} לא הגיב`, 'error');
+    return false;
+}
+
+/* ============================================================
+   CINEMA ON — Séquence orchestrée avec vérification triple
    ============================================================ */
 async function ensureCinemaOn() {
     const pOn = isOn(CINEMA.projector.id);
@@ -110,19 +144,11 @@ async function ensureCinemaOn() {
     await Promise.all(CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })));
     await callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id });
 
-    if (!pOn) await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
-    if (!rOn) await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
-
-    await sleep(4000);
-    await fetchStates();
-
-    if (!isOn(CINEMA.projector.id)) {
-        await callSvc('media_player', 'turn_on', { entity_id: CINEMA.projector.id });
-        await sleep(3000);
+    if (!pOn) {
+        await callWithRetry('media_player', 'turn_on', CINEMA.projector.id, {}, ['on','idle','playing']);
     }
-    if (!isOn(CINEMA.receiver.id)) {
-        await callSvc('media_player', 'turn_on', { entity_id: CINEMA.receiver.id });
-        await sleep(2000);
+    if (!rOn) {
+        await callWithRetry('media_player', 'turn_on', CINEMA.receiver.id, {}, ['on','idle','playing']);
     }
 
     await fetchStates();
@@ -143,9 +169,8 @@ async function runScene(name) {
             await ensureCinemaOn();
         } else if (name === 'cinema_off') {
             toast('🔴 מכבה...', 'info');
-            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.projector.id });
-            await callSvc('media_player', 'turn_off', { entity_id: CINEMA.receiver.id });
-            await sleep(1000);
+            await callWithRetry('media_player', 'turn_off', CINEMA.projector.id, {}, ['off','standby','unavailable']);
+            await callWithRetry('media_player', 'turn_off', CINEMA.receiver.id, {}, ['off','standby','unavailable']);
             await callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' });
             await fetchStates();
             toast('🔴 הקולנוע כבוי', 'success');
@@ -240,15 +265,11 @@ async function coverAction(a) {
 }
 
 async function devOn(id) {
-    await callSvc('media_player', 'turn_on', { entity_id: id });
-    toast('⚡ הופעל', 'success');
-    setTimeout(fetchStates, 3000);
+    await callWithRetry('media_player', 'turn_on', id, {}, ['on','idle','playing']);
 }
 
 async function devOff(id) {
-    await callSvc('media_player', 'turn_off', { entity_id: id });
-    toast('🔴 כובה', 'success');
-    setTimeout(fetchStates, 3000);
+    await callWithRetry('media_player', 'turn_off', id, {}, ['off','standby','unavailable']);
 }
 
 async function toggleDev(id) {
