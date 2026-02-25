@@ -10,6 +10,7 @@ const RECEIVER = 'media_player.receiver';
 const PROJECTOR = 'media_player.epson';
 const SHIELD = 'remote.shield';
 const SHIELD_MP = 'media_player.shield_2';
+const SHIELD_CAST = 'media_player.shield';
 
 const RECEIVER_INPUTS = {
     shield: 'GAME',
@@ -60,7 +61,7 @@ const CINEMA = {
 const ALL_IDS = [
     ...CINEMA.lights.map(l => l.id),
     CINEMA.cover.id,
-    RECEIVER, PROJECTOR, SHIELD, SHIELD_MP,
+    RECEIVER, PROJECTOR, SHIELD, SHIELD_MP, SHIELD_CAST,
     ...CINEMA.speakers.map(s => s.id),
 ];
 
@@ -113,7 +114,9 @@ function isOn(id) { return ['on', 'playing', 'idle', 'paused'].includes(S.entiti
 function isProjectorOn() { return isOn(PROJECTOR); }
 function isReceiverOn() { return isOn(RECEIVER); }
 
-function getShieldApp() { return S.entities[SHIELD]?.attr?.current_activity || null; }
+function getShieldApp() {
+    return S.entities[SHIELD_MP]?.attr?.app_name || S.entities[SHIELD]?.attr?.current_activity || null;
+}
 
 /* ============================================================
    CONTRÔLE RÉSEAU DIRECT — Projecteur + Receiver
@@ -156,7 +159,11 @@ async function receiverSetInput(source) {
 }
 
 async function launchApp(pkg) {
-    await callSvc('remote', 'turn_on', { entity_id: SHIELD, activity: pkg });
+    await callSvc('media_player', 'play_media', {
+        entity_id: SHIELD_CAST,
+        media_content_id: pkg,
+        media_content_type: 'app',
+    });
 }
 
 /* ============================================================
@@ -168,22 +175,30 @@ async function smartSource(app) {
     toast(`🎬 ${app.name} — מפעיל...`, 'info');
 
     try {
-        await Promise.all([
+        const needPower = !isProjectorOn() || !isReceiverOn();
+
+        const parallel = [
             ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
             callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+        ];
+        if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
+        if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
+        await Promise.all(parallel);
+
+        if (needPower) await sleep(4000);
+
+        await Promise.all([
+            app.input ? receiverSetInput(app.input) : Promise.resolve(),
+            launchApp(app.pkg),
         ]);
 
-        const tasks = [];
-        if (!isProjectorOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
-        if (!isReceiverOn()) tasks.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
-        if (tasks.length) { await Promise.all(tasks); await sleep(4000); }
-
-        if (app.input) await receiverSetInput(app.input);
-        await launchApp(app.pkg);
         await sleep(2000);
         await fetchStates();
         toast(`✅ ${app.name} — מוכן!`, 'success');
-    } catch { toast('שגיאה', 'error'); }
+    } catch (e) {
+        console.error('[Onyx] smartSource error:', e);
+        toast(`⚠️ שגיאה בהפעלת ${app.name}`, 'error');
+    }
 
     unlockBusy();
 }
@@ -318,16 +333,15 @@ async function sendRemoteCmd(cmd) {
 
 async function sendText(text) {
     if (!text) return;
-    try {
-        await callSvc('androidtv', 'adb_command', { entity_id: SHIELD_MP, command: `input text "${text}"` });
-        toast(`⌨️ "${text}" נשלח`, 'success');
-    } catch {
-        for (const ch of text) {
-            await callSvc('remote', 'send_command', { entity_id: SHIELD, command: ch });
-            await sleep(150);
-        }
-        toast(`⌨️ "${text}" נשלח`, 'success');
+    const keyMap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (const ch of text) {
+        const upper = ch.toUpperCase();
+        const idx = keyMap.indexOf(upper);
+        const cmd = idx >= 0 ? `KEYCODE_${upper}` : ch >= '0' && ch <= '9' ? `KEYCODE_${ch}` : ch === ' ' ? 'KEYCODE_SPACE' : `KEYCODE_${upper}`;
+        await callSvc('remote', 'send_command', { entity_id: SHIELD, command: cmd });
+        await sleep(120);
     }
+    toast(`⌨️ "${text}" נשלח`, 'success');
 }
 
 async function allLights(svc) {
@@ -357,7 +371,8 @@ function renderStatusBar() {
     setStatItem('statLights', lightsOn > 0, `${lightsOn}/${CINEMA.lights.length}`);
 
     const actEl = document.getElementById('currentActivity');
-    const app = getShieldApp();
+    const rawApp = getShieldApp();
+    const app = rawApp === 'com.google.android.backdrop' ? null : rawApp;
     const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '—';
     if (actEl) actEl.textContent = appLabel;
 
@@ -375,7 +390,8 @@ function setStatItem(elId, on, text) {
 function renderProjectorStatus() {
     const pOn = isProjectorOn(), rOn = isReceiverOn();
     const rSrc = S.entities[RECEIVER]?.attr?.source || '—';
-    const app = getShieldApp();
+    const rawApp = getShieldApp();
+    const app = rawApp === 'com.google.android.backdrop' ? null : rawApp;
     const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '';
     const el = document.getElementById('projectorPanel'); if (!el) return;
 
@@ -430,12 +446,13 @@ function renderCurtain() {
 
 function renderSources() {
     const g = document.getElementById('sourcesGrid'); if (!g) return;
-    const currentApp = getShieldApp();
+    const rawApp = getShieldApp();
+    const currentApp = rawApp === 'com.google.android.backdrop' ? null : rawApp;
     const anyOn = isProjectorOn() || isReceiverOn();
 
     g.innerHTML = APPS.map((a, i) =>
         `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-idx="${i}"><div class="src-e">${a.emoji}</div><div class="src-n">${a.name}</div></div>`
-    ).join('') + (anyOn ? `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>` : '');
+    ).join('') + `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>`;
 
     g.querySelectorAll('.src:not(.src-off)').forEach(t => {
         t.addEventListener('click', () => smartSource(APPS[parseInt(t.dataset.idx)]));
@@ -485,7 +502,8 @@ function renderSpeakers() {
 }
 
 function updateHero() {
-    const app = getShieldApp();
+    const rawApp = getShieldApp();
+    const app = rawApp === 'com.google.android.backdrop' ? null : rawApp;
     S.cinemaOn = isProjectorOn() || isReceiverOn();
     const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : null;
 
