@@ -425,6 +425,26 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 .src-n { font-size: 0.65rem; font-weight: 600; color: var(--t2); }
 .src.active .src-n { color: var(--neon); }
 
+.src-section-title {
+    grid-column: 1 / -1;
+    font-size: 0.65rem; font-weight: 700; color: var(--t2);
+    letter-spacing: 1px; padding: 8px 0 2px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    margin-top: 4px;
+}
+.src-section-title:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+
+.src-console {
+    border-color: rgba(139,92,246,0.25) !important;
+    background: rgba(139,92,246,0.08) !important;
+}
+.src-console:hover { background: rgba(139,92,246,0.18) !important; }
+
+.ch-desc {
+    font-size: 0.62rem; color: var(--t3); text-align: center;
+    margin-bottom: 12px; font-style: italic;
+}
+
 /* ============================================================
    AUDIO
    ============================================================ */

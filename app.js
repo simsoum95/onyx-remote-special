@@ -1,16 +1,16 @@
 /**
- * ONYX REMOTE SPECIAL — PWA Standalone
- * Contrôle 100% réseau direct — ZERO Harmony Hub / ZERO IR
+ * ONYX REMOTE SPECIAL — Contrôle 100% ADB + Réseau Direct
+ * ZERO Harmony Hub / ZERO IR — Contrôle absolu via ADB
  * Pioneer receiver via media_player.receiver (TCP réseau)
  * Epson projecteur via media_player.epson (ESC/VP.net)
- * Shield via remote.shield (Android TV Remote Protocol)
+ * Shield via ADB (androidtv.adb_command) + remote.shield (Android TV Remote)
  */
 
 const RECEIVER = 'media_player.receiver';
 const PROJECTOR = 'media_player.epson';
 const SHIELD = 'remote.shield';
 const SHIELD_MP = 'media_player.shield_2';
-const SHIELD_CAST = 'media_player.shield';
+const SHIELD_ADB = 'media_player.android_tv_192_168_1_80';
 
 const RECEIVER_INPUTS = {
     shield: 'BD/DVD',
@@ -23,22 +23,46 @@ const RECEIVER_INPUTS = {
 };
 
 const APPS = [
-    { name: 'Free TV', pkg: 'tv.freetv.androidtv', emoji: '📡', input: 'BD/DVD' },
-    { name: 'Netflix', pkg: 'com.netflix.ninja', emoji: '🎬', input: 'BD/DVD' },
-    { name: 'Plex', pkg: 'com.plexapp.android', emoji: '🎞️', input: 'BD/DVD' },
-    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', emoji: '📺', input: 'BD/DVD' },
-    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', emoji: '▶️', input: 'BD/DVD' },
-    { name: 'Disney+', pkg: 'com.disney.disneyplus', emoji: '🏰', input: 'BD/DVD' },
+    { name: 'Netflix', pkg: 'com.netflix.ninja', icon: '🎬', cat: 'streaming' },
+    { name: 'Free TV', pkg: 'tv.freetv.androidtv', icon: '📡', cat: 'tv' },
+    { name: 'Plex', pkg: 'com.plexapp.android', icon: '🎞️', cat: 'streaming' },
+    { name: 'YouTube', pkg: 'com.google.android.youtube.tv', icon: '▶️', cat: 'streaming' },
+    { name: 'Amazon Prime', pkg: 'com.amazon.amazonvideo.livingroom', icon: '📦', cat: 'streaming' },
+    { name: 'Spotify', pkg: 'com.spotify.tv.android', icon: '🎵', cat: 'music' },
+    { name: 'Mako', pkg: 'com.keshet.mako.VODAndroidTV', icon: '🔷', cat: 'israel' },
+    { name: 'Hot', pkg: 'il.net.hot.hot', icon: '🔴', cat: 'israel' },
+    { name: 'Reshet 13', pkg: 'com.applicaster.iReshet', icon: '📺', cat: 'israel' },
+    { name: 'כאן 11', pkg: 'com.applicaster.il.ch1', icon: '🟢', cat: 'israel' },
+    { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', icon: '🍎', cat: 'streaming' },
+    { name: 'Disney+', pkg: 'com.disney.disneyplus', icon: '🏰', cat: 'streaming' },
+    { name: 'YT Music', pkg: 'com.google.android.youtube.tvmusic', icon: '🎶', cat: 'music' },
+    { name: 'Startup+', pkg: 'tv.startupshow.android', icon: '🌟', cat: 'israel' },
+    { name: 'Web Browser', pkg: 'com.tvwebbrowser.v22', icon: '🌐', cat: 'tools' },
+    { name: 'Play Store', pkg: 'com.android.vending', icon: '🛒', cat: 'tools' },
 ];
 
-const TV_CHANNELS = [
-    { num: 1, name: 'TF1' }, { num: 2, name: 'France 2' }, { num: 3, name: 'France 3' },
-    { num: 4, name: 'Canal+' }, { num: 5, name: 'France 5' }, { num: 6, name: 'M6' },
-    { num: 7, name: 'Arte' }, { num: 8, name: 'D8/C8' }, { num: 9, name: 'W9' },
-    { num: 10, name: 'TMC' }, { num: 11, name: 'TFX' }, { num: 12, name: 'NRJ 12' },
-    { num: 13, name: 'LCP' }, { num: 14, name: 'France 4' }, { num: 15, name: 'BFM TV' },
-    { num: 16, name: 'CNews' }, { num: 17, name: 'CStar' }, { num: 18, name: 'Gulli' },
-    { num: 19, name: 'France Info' }, { num: 20, name: 'L\'Équipe' },
+const CONSOLES = [
+    { name: 'PlayStation 5', input: 'GAME', icon: '🎮' },
+];
+
+const ISRAELI_CHANNELS = [
+    { num: 11, name: 'כאן 11' },
+    { num: 12, name: 'כאן חינוכית' },
+    { num: 13, name: 'רשת 13' },
+    { num: 14, name: 'קשת 12' },
+    { num: 23, name: 'i24 News' },
+    { num: 32, name: 'כאן 33' },
+    { num: 33, name: 'Sport 1' },
+    { num: 34, name: 'Sport 2' },
+    { num: 35, name: 'Sport 3' },
+    { num: 41, name: 'Music 24' },
+    { num: 51, name: 'HOT Cinema' },
+    { num: 52, name: 'HOT Zone' },
+    { num: 53, name: 'HOT 3' },
+    { num: 66, name: 'Nick Jr' },
+    { num: 67, name: 'Disney' },
+    { num: 91, name: 'HOT VOD' },
+    { num: 99, name: 'TV Guide' },
 ];
 
 const CINEMA = {
@@ -61,11 +85,11 @@ const CINEMA = {
 const ALL_IDS = [
     ...CINEMA.lights.map(l => l.id),
     CINEMA.cover.id,
-    RECEIVER, PROJECTOR, SHIELD, SHIELD_MP, SHIELD_CAST,
+    RECEIVER, PROJECTOR, SHIELD, SHIELD_MP, SHIELD_ADB,
     ...CINEMA.speakers.map(s => s.id),
 ];
 
-const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false };
+const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false, activeTab: 'apps' };
 
 function lockBusy() {
     S.busy = true; setBusy(true);
@@ -108,14 +132,40 @@ async function callSvc(domain, service, data) {
     catch (e) { console.error('[Onyx]', e); return false; }
 }
 
+async function adbCmd(cmd) {
+    return callSvc('androidtv', 'adb_command', { entity_id: SHIELD_ADB, command: cmd });
+}
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function isOn(id) { return ['on', 'playing', 'idle', 'paused'].includes(S.entities[id]?.state); }
-
 function isProjectorOn() { return isOn(PROJECTOR); }
 function isReceiverOn() { return isOn(RECEIVER); }
 
 function getShieldApp() {
-    return S.entities[SHIELD_MP]?.attr?.app_name || S.entities[SHIELD]?.attr?.current_activity || null;
+    const adbApp = S.entities[SHIELD_ADB]?.attr?.app_id;
+    const mpApp = S.entities[SHIELD_MP]?.attr?.app_name;
+    const rmtApp = S.entities[SHIELD]?.attr?.current_activity;
+    const raw = adbApp || mpApp || rmtApp || null;
+    if (raw === 'com.google.android.backdrop' || raw === 'com.google.android.tvlauncher') return null;
+    return raw;
+}
+
+/* ============================================================
+   CONTRÔLE ADB — Lancement d'apps via ADB (méthode la plus fiable)
+   ============================================================ */
+async function adbLaunchApp(pkg) {
+    toast(`📱 פותח ${APPS.find(a => a.pkg === pkg)?.name || pkg}...`, 'info');
+    await adbCmd(`am start -a android.intent.action.VIEW -n $(cmd package resolve-activity --brief ${pkg} | tail -1) || am start $(pm resolve-activity --brief ${pkg} | tail -n 1) || monkey -p ${pkg} -c android.intent.category.LAUNCHER 1`);
+}
+
+async function adbSendText(text) {
+    if (!text) return;
+    await adbCmd(`input text "${text.replace(/"/g, '\\"')}"`);
+    toast(`⌨️ "${text}" נשלח`, 'success');
+}
+
+async function adbSendKey(keycode) {
+    await adbCmd(`input keyevent ${keycode}`);
 }
 
 /* ============================================================
@@ -158,20 +208,8 @@ async function receiverSetInput(source) {
     await callSvc('media_player', 'select_source', { entity_id: RECEIVER, source });
 }
 
-async function launchApp(pkg) {
-    await callSvc('remote', 'send_command', { entity_id: SHIELD, command: 'HOME' });
-    await sleep(1500);
-    await callSvc('remote', 'turn_on', { entity_id: SHIELD, activity: pkg });
-    await sleep(2000);
-    await callSvc('media_player', 'play_media', {
-        entity_id: SHIELD_MP,
-        media_content_id: pkg,
-        media_content_type: 'app',
-    });
-}
-
 /* ============================================================
-   SMART SOURCE — allume tout + lance l'app
+   SMART SOURCE — allume tout + lance l'app via ADB
    ============================================================ */
 async function smartSource(app) {
     if (S.busy) return;
@@ -184,23 +222,24 @@ async function smartSource(app) {
         const parallel = [
             ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
             callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
-            callSvc('remote', 'send_command', { entity_id: SHIELD, command: 'HOME' }),
+            adbSendKey('KEYCODE_WAKEUP'),
         ];
         if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
         if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
         await Promise.all(parallel);
 
-        if (needPower) await sleep(6000);
-        else await sleep(1000);
+        if (needPower) await sleep(5000);
+        else await sleep(500);
 
         await Promise.all([
-            app.input ? receiverSetInput(app.input) : Promise.resolve(),
+            receiverSetInput('BD/DVD'),
             callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
         ]);
-        await sleep(1000);
-        await launchApp(app.pkg);
 
-        await sleep(2000);
+        await sleep(1000);
+        await adbLaunchApp(app.pkg);
+
+        await sleep(3000);
         await fetchStates();
         toast(`✅ ${app.name} — מוכן!`, 'success');
     } catch (e) {
@@ -211,20 +250,88 @@ async function smartSource(app) {
     unlockBusy();
 }
 
+async function smartConsole(console_item) {
+    if (S.busy) return;
+    lockBusy();
+    toast(`🎮 ${console_item.name} — מפעיל...`, 'info');
+
+    try {
+        const parallel = [
+            ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
+            callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+        ];
+        if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
+        if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
+        await Promise.all(parallel);
+
+        await sleep(5000);
+
+        await Promise.all([
+            receiverSetInput(console_item.input),
+            callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
+        ]);
+
+        await sleep(2000);
+        await fetchStates();
+        toast(`✅ ${console_item.name} — מוכן!`, 'success');
+    } catch (e) {
+        console.error('[Onyx] smartConsole error:', e);
+        toast(`⚠️ שגיאה בהפעלת ${console_item.name}`, 'error');
+    }
+
+    unlockBusy();
+}
+
 /* ============================================================
-   CHAÎNES TV
+   CHAÎNES TV — Via ADB (envoi numéros dans FreeTV)
    ============================================================ */
 async function goToChannel(num) {
-    const digits = String(num).split('');
-    for (const d of digits) {
-        await callSvc('remote', 'send_command', { entity_id: SHIELD, command: `KEYCODE_${d}` });
-        await sleep(200);
+    if (S.busy) return;
+    lockBusy();
+    toast(`📺 ערוץ ${num} — מפעיל...`, 'info');
+
+    try {
+        const needPower = !isProjectorOn() || !isReceiverOn();
+
+        if (needPower) {
+            const parallel = [
+                ...CINEMA.lights.map(l => callSvc('light', 'turn_off', { entity_id: l.id })),
+                callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
+                adbSendKey('KEYCODE_WAKEUP'),
+            ];
+            if (!isProjectorOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }));
+            if (!isReceiverOn()) parallel.push(callSvc('media_player', 'turn_on', { entity_id: RECEIVER }));
+            await Promise.all(parallel);
+            await sleep(5000);
+            await Promise.all([
+                receiverSetInput('BD/DVD'),
+                callSvc('media_player', 'select_source', { entity_id: PROJECTOR, source: 'HDMI1' }),
+            ]);
+            await sleep(1000);
+        }
+
+        await adbLaunchApp('tv.freetv.androidtv');
+        await sleep(4000);
+
+        const digits = String(num).split('');
+        for (const d of digits) {
+            await adbSendKey(`KEYCODE_${d}`);
+            await sleep(300);
+        }
+
+        await sleep(1000);
+        await fetchStates();
+        toast(`✅ ערוץ ${num} פעיל`, 'success');
+    } catch (e) {
+        console.error('[Onyx] goToChannel error:', e);
+        toast(`⚠️ שגיאה`, 'error');
     }
-    toast(`📺 ערוץ ${num}`, 'success');
+
+    unlockBusy();
 }
 
 async function sendChannelDigit(d) {
-    await callSvc('remote', 'send_command', { entity_id: SHIELD, command: `KEYCODE_${d}` });
+    await adbSendKey(`KEYCODE_${d}`);
 }
 
 /* ============================================================
@@ -242,6 +349,7 @@ async function runScene(name) {
                 callSvc('cover', 'close_cover', { entity_id: CINEMA.cover.id }),
                 callSvc('media_player', 'turn_on', { entity_id: PROJECTOR }),
                 callSvc('media_player', 'turn_on', { entity_id: RECEIVER }),
+                adbSendKey('KEYCODE_WAKEUP'),
             ]);
             await sleep(4000);
             await Promise.all([
@@ -255,6 +363,7 @@ async function runScene(name) {
             await Promise.all([
                 callSvc('media_player', 'turn_off', { entity_id: PROJECTOR }),
                 callSvc('media_player', 'turn_off', { entity_id: RECEIVER }),
+                adbSendKey('KEYCODE_SLEEP'),
                 callSvc('light', 'turn_on', { entity_id: 'light.8a_cinema_basement_big_spots_switch' }),
             ]);
             await sleep(3000);
@@ -342,19 +451,6 @@ async function sendRemoteCmd(cmd) {
     catch { toast('⚠️ שגיאה', 'error'); }
 }
 
-async function sendText(text) {
-    if (!text) return;
-    const keyMap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    for (const ch of text) {
-        const upper = ch.toUpperCase();
-        const idx = keyMap.indexOf(upper);
-        const cmd = idx >= 0 ? `KEYCODE_${upper}` : ch >= '0' && ch <= '9' ? `KEYCODE_${ch}` : ch === ' ' ? 'KEYCODE_SPACE' : `KEYCODE_${upper}`;
-        await callSvc('remote', 'send_command', { entity_id: SHIELD, command: cmd });
-        await sleep(120);
-    }
-    toast(`⌨️ "${text}" נשלח`, 'success');
-}
-
 async function allLights(svc) {
     await Promise.all(CINEMA.lights.map(l => callSvc('light', svc, { entity_id: l.id })));
     toast(svc === 'turn_on' ? '💡 הכל דלוק' : '🌑 הכל כבוי', 'success');
@@ -382,8 +478,7 @@ function renderStatusBar() {
     setStatItem('statLights', lightsOn > 0, `${lightsOn}/${CINEMA.lights.length}`);
 
     const actEl = document.getElementById('currentActivity');
-    const rawApp = getShieldApp();
-    const app = rawApp === 'com.google.android.backdrop' ? null : rawApp;
+    const app = getShieldApp();
     const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '—';
     if (actEl) actEl.textContent = appLabel;
 
@@ -401,8 +496,7 @@ function setStatItem(elId, on, text) {
 function renderProjectorStatus() {
     const pOn = isProjectorOn(), rOn = isReceiverOn();
     const rSrc = S.entities[RECEIVER]?.attr?.source || '—';
-    const rawApp = getShieldApp();
-    const app = rawApp === 'com.google.android.backdrop' ? null : rawApp;
+    const app = getShieldApp();
     const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : '';
     const el = document.getElementById('projectorPanel'); if (!el) return;
 
@@ -457,23 +551,62 @@ function renderCurtain() {
 
 function renderSources() {
     const g = document.getElementById('sourcesGrid'); if (!g) return;
-    const rawApp = getShieldApp();
-    const currentApp = rawApp === 'com.google.android.backdrop' ? null : rawApp;
-    const anyOn = isProjectorOn() || isReceiverOn();
+    const currentApp = getShieldApp();
 
-    g.innerHTML = APPS.map((a, i) =>
-        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-idx="${i}"><div class="src-e">${a.emoji}</div><div class="src-n">${a.name}</div></div>`
-    ).join('') + `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>`;
+    const streaming = APPS.filter(a => a.cat === 'streaming');
+    const israel = APPS.filter(a => a.cat === 'israel' || a.cat === 'tv');
+    const music = APPS.filter(a => a.cat === 'music');
+    const tools = APPS.filter(a => a.cat === 'tools');
 
-    g.querySelectorAll('.src:not(.src-off)').forEach(t => {
-        t.addEventListener('click', () => smartSource(APPS[parseInt(t.dataset.idx)]));
+    let html = '';
+
+    html += `<div class="src-section-title">📺 סטרימינג</div>`;
+    html += streaming.map(a =>
+        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
+    ).join('');
+
+    html += `<div class="src-section-title">🇮🇱 ערוצים ישראליים</div>`;
+    html += israel.map(a =>
+        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
+    ).join('');
+
+    html += `<div class="src-section-title">🎵 מוזיקה</div>`;
+    html += music.map(a =>
+        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
+    ).join('');
+
+    html += `<div class="src-section-title">🎮 קונסולות</div>`;
+    html += CONSOLES.map((c, i) =>
+        `<div class="src src-console" data-console="${i}"><div class="src-e">${c.icon}</div><div class="src-n">${c.name}</div></div>`
+    ).join('');
+
+    html += `<div class="src-section-title">🛠️ כלים</div>`;
+    html += tools.map(a =>
+        `<div class="src ${currentApp === a.pkg ? 'active' : ''}" data-pkg="${a.pkg}"><div class="src-e">${a.icon}</div><div class="src-n">${a.name}</div></div>`
+    ).join('');
+
+    html += `<div class="src-section-title"></div>`;
+    html += `<div class="src src-off" id="srcOff"><div class="src-e">🔴</div><div class="src-n">כיבוי הכל</div></div>`;
+
+    g.innerHTML = html;
+
+    g.querySelectorAll('.src[data-pkg]').forEach(t => {
+        t.addEventListener('click', () => {
+            const app = APPS.find(a => a.pkg === t.dataset.pkg);
+            if (app) smartSource(app);
+        });
     });
+
+    g.querySelectorAll('.src-console').forEach(t => {
+        t.addEventListener('click', () => smartConsole(CONSOLES[parseInt(t.dataset.console)]));
+    });
+
     document.getElementById('srcOff')?.addEventListener('click', () => runScene('cinema_off'));
 }
 
 function renderChannels() {
     const g = document.getElementById('channelsGrid'); if (!g) return;
-    g.innerHTML = TV_CHANNELS.map(c =>
+    g.innerHTML = ISRAELI_CHANNELS.map(c =>
         `<div class="ch-tile" data-ch="${c.num}"><span class="ch-num">${c.num}</span><span class="ch-name">${c.name}</span></div>`
     ).join('');
     g.querySelectorAll('.ch-tile').forEach(t => t.addEventListener('click', () => goToChannel(parseInt(t.dataset.ch))));
@@ -513,8 +646,7 @@ function renderSpeakers() {
 }
 
 function updateHero() {
-    const rawApp = getShieldApp();
-    const app = rawApp === 'com.google.android.backdrop' ? null : rawApp;
+    const app = getShieldApp();
     S.cinemaOn = isProjectorOn() || isReceiverOn();
     const appLabel = app ? (APPS.find(a => a.pkg === app)?.name || app.split('.').pop()) : null;
 
@@ -607,13 +739,13 @@ function initEvents() {
     document.getElementById('kbToggle')?.addEventListener('click', () => document.getElementById('kbPanel')?.classList.toggle('hidden'));
     document.getElementById('kbSend')?.addEventListener('click', () => {
         const inp = document.getElementById('kbInput');
-        if (inp?.value) { sendText(inp.value); inp.value = ''; }
+        if (inp?.value) { adbSendText(inp.value); inp.value = ''; }
     });
     document.getElementById('kbInput')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { sendText(e.target.value); e.target.value = ''; }
+        if (e.key === 'Enter') { adbSendText(e.target.value); e.target.value = ''; }
     });
 
-    document.querySelectorAll('.numpad-btn').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.numpad-btn[data-digit]').forEach(b => b.addEventListener('click', () => {
         b.style.transform = 'scale(0.85)';
         setTimeout(() => { b.style.transform = ''; }, 150);
         sendChannelDigit(b.dataset.digit);

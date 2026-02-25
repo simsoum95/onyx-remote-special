@@ -126,14 +126,17 @@
                     </div>
                     <div class="lights-grid" id="lightsGrid"></div>
                 </div>
-                <!-- Sources — Apps Shield directes -->
+                <!-- Sources — Toutes les apps + consoles -->
                 <div class="glass-card">
-                    <div class="card-hdr"><span class="card-ico">🎯</span><span>אפליקציות</span><span class="activity-badge" id="currentActivity">—</span></div>
+                    <div class="card-hdr"><span class="card-ico">🎯</span><span>אפליקציות ומקורות</span><span class="activity-badge" id="currentActivity">—</span></div>
                     <div class="sources-grid" id="sourcesGrid"></div>
                 </div>
-                <!-- Chaînes TV -->
+                <!-- Chaînes TV israeliennes -->
                 <div class="glass-card" id="channelsSection">
-                    <div class="card-hdr"><span class="card-ico">📺</span><span>ערוצים</span></div>
+                    <div class="card-hdr"><span class="card-ico">📺</span><span>ערוצים ישראליים</span></div>
+                    <p class="ch-desc">לחץ על ערוץ → FreeTV נפתח אוטומטי + הערוץ נבחר</p>
+                    <div class="channels-grid" id="channelsGrid"></div>
+                    <div class="card-hdr" style="margin-top:16px"><span class="card-ico">🔢</span><span>מספר ערוץ ידני</span></div>
                     <div class="numpad">
                         <button class="numpad-btn" data-digit="1">1</button>
                         <button class="numpad-btn" data-digit="2">2</button>
@@ -148,7 +151,6 @@
                         <button class="numpad-btn" data-digit="0">0</button>
                         <button class="numpad-btn numpad-ok" data-cmd="DPAD_CENTER">OK</button>
                     </div>
-                    <div class="channels-grid" id="channelsGrid"></div>
                 </div>
                 <!-- Audio -->
                 <div class="glass-card">
