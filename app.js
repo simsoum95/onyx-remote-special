@@ -37,6 +37,12 @@ const CINEMA = {
         { id: 'media_player.shield_2', name: 'Shield 2', emoji: '🛡️' },
         { id: 'media_player.qvlnv_byty', name: 'Apple TV', emoji: '🍎' },
     ],
+    speakers: [
+        { id: 'media_player.livinig_room', name: 'סלון', emoji: '🔈' },
+        { id: 'media_player.balcony', name: 'מרפסת', emoji: '🌙' },
+        { id: 'media_player.office', name: 'משרד', emoji: '💼' },
+        { id: 'media_player.parents', name: 'הורים', emoji: '🛏️' },
+    ],
     sources: [
         { name: 'Netflix', activity: 'Netflix', emoji: '🎬' },
         { name: 'Free TV', activity: 'FreeTV', emoji: '📡' },
@@ -52,6 +58,7 @@ const ALL_IDS = [
     CINEMA.receiver.id,
     CINEMA.projector.id,
     ...CINEMA.players.map(p => p.id),
+    ...CINEMA.speakers.map(s => s.id),
     HARMONY,
 ];
 
@@ -325,6 +332,7 @@ function renderAll() {
     renderSources();
     renderAudio();
     renderDevices();
+    renderSpeakers();
     updateHero();
 }
 
@@ -455,6 +463,22 @@ function renderDevices() {
         return `<div class="dev ${on ? 'on' : 'off'}" data-id="${d.id}"><div class="dev-e">${d.emoji}</div><div class="dev-n">${d.name}</div><div class="dev-s">${on ? 'דלוק' : st === 'unavailable' ? '—' : 'כבוי'}</div></div>`;
     }).join('');
     g.querySelectorAll('.dev').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
+}
+
+function renderSpeakers() {
+    const g = document.getElementById('speakersGrid'); if (!g) return;
+    g.innerHTML = CINEMA.speakers.map(s => {
+        const e = S.entities[s.id];
+        const st = e?.state || 'unavailable';
+        const on = ['playing','paused','idle'].includes(st);
+        const title = e?.attr?.media_title || '';
+        return `<div class="spk ${on ? 'on' : ''}" data-id="${s.id}">
+            <div class="spk-e">${s.emoji}</div>
+            <div class="spk-n">${s.name}</div>
+            <div class="spk-s">${on ? (title || 'פעיל') : 'כבוי'}</div>
+        </div>`;
+    }).join('');
+    g.querySelectorAll('.spk').forEach(t => t.addEventListener('click', () => toggleDev(t.dataset.id)));
 }
 
 function updateHero() {

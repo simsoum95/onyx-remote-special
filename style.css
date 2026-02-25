@@ -460,6 +460,24 @@ body.busy .src, body.busy .app-tile, body.busy .lt, body.busy .dev {
 .app-n { font-size: 0.62rem; font-weight: 600; color: var(--t2); }
 
 /* ============================================================
+   SPEAKERS
+   ============================================================ */
+.speakers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.spk {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 14px 8px; border-radius: var(--rs);
+    background: var(--glass); border: 1px solid var(--gb);
+    cursor: pointer; transition: var(--tr); text-align: center;
+}
+.spk:hover { background: var(--gbh); }
+.spk:active { transform: scale(0.93); }
+.spk.on { border-color: rgba(168,85,247,0.3); background: linear-gradient(180deg, rgba(168,85,247,0.1), var(--glass)); }
+.spk-e { font-size: 1.3rem; }
+.spk-n { font-size: 0.65rem; font-weight: 600; color: var(--t2); }
+.spk-s { font-family: var(--tech); font-size: 0.48rem; letter-spacing: 1px; color: var(--t3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90px; }
+.spk.on .spk-s { color: rgb(168,85,247); }
+
+/* ============================================================
    DEVICES
    ============================================================ */
 .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 8px; }
