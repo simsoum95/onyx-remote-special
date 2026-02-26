@@ -851,6 +851,11 @@ function openStreamBrowser(id) {
     overlay.style.setProperty('--svc-color', svc.color);
 
     loadStreamTrending();
+    prelaunchApp(svc.pkg);
+}
+
+async function prelaunchApp(pkg) {
+    try { await adb(`monkey -p ${pkg} 1`); } catch {}
 }
 
 function closeStreamBrowser() {
@@ -935,18 +940,19 @@ function renderStreamItems(items, container) {
     if (!items.length) { container.innerHTML = '<div class="plex-loading">אין תוכן</div>'; return; }
 
     const esc = s => (s || '').replace(/"/g, '&quot;');
-    container.innerHTML = `<div class="plex-grid">${items.map(item =>
-        `<div class="plex-card stream-card" data-title="${esc(item.origTitle || item.title)}" data-tmdb="${item.tmdbId || ''}">
+    container.innerHTML = `<div class="plex-grid">${items.map(item => {
+        const isShow = item.category === 'סדרה' ? '1' : '0';
+        return `<div class="plex-card stream-card" data-title="${esc(item.origTitle || item.title)}" data-tmdb="${item.tmdbId || ''}" data-show="${isShow}">
             ${item.image ? `<img src="${item.image}" alt="${esc(item.title)}" loading="lazy" onerror="this.style.display='none'">` : ''}
             <div class="plex-card-info">
                 <div class="plex-card-title">${item.title}</div>
                 <div class="plex-card-year">${item.category} ${item.year ? '• ' + item.year : ''}</div>
             </div>
-        </div>`
-    ).join('')}</div>`;
+        </div>`;
+    }).join('')}</div>`;
 
     container.querySelectorAll('.stream-card').forEach(c => {
-        c.addEventListener('click', () => playOnStream(c.dataset.title, c.dataset.tmdb));
+        c.addEventListener('click', () => playOnStream(c.dataset.title, c.dataset.tmdb, c.dataset.show === '1'));
     });
 }
 
@@ -957,16 +963,14 @@ async function getDeepLink(title, providerId) {
         const data = await r.json();
         for (const result of data.results || []) {
             for (const offer of result.offers || []) {
-                if (offer.providerId === providerId && offer.url) {
-                    const m = offer.url.match(/netflix\.com\/title\/(\d+)/);
-                    if (m) return { type: 'netflix', id: m[1] };
+                if (offer.providerId === providerId) {
+                    const nfx = offer.url?.match(/netflix\.com\/title\/(\d+)/);
+                    if (nfx) return { type: 'netflix', id: nfx[1] };
                     const prime = offer.deeplink?.match(/gti=([^&"#]+)/);
                     if (prime) return { type: 'prime', gti: prime[1] };
-                    const apple = offer.deeplink?.match(/intent:\/\/(.+?)#/);
-                    if (apple) return { type: 'apple', url: 'https://' + apple[1] };
-                    const disney = offer.deeplink?.match(/intent:\/\/(.+?)#/);
-                    if (disney) return { type: 'disney', url: 'https://' + disney[1] };
-                    return { type: 'generic', url: offer.url, deeplink: offer.deeplink };
+                    const intentUrl = offer.deeplink?.match(/intent:\/\/(.+?)#/);
+                    if (intentUrl) return { type: 'intent', url: 'https://' + intentUrl[1].replace(/\\u0026/g, '&') };
+                    if (offer.url) return { type: 'url', url: offer.url };
                 }
             }
         }
@@ -974,7 +978,7 @@ async function getDeepLink(title, providerId) {
     return null;
 }
 
-async function playOnStream(title, tmdbId) {
+async function playOnStream(title, tmdbId, isShow) {
     if (!activeStreamId || S.busy) return;
     const svc = STREAM_SERVICES[activeStreamId];
     const sid = activeStreamId;
@@ -995,10 +999,10 @@ async function playOnStream(title, tmdbId) {
             const link = await getDeepLink(searchText, svc.tmdbProvider);
 
             if (link && link.type === 'netflix') {
-                await netflixDeepLink(link.id);
+                await netflixDeepLink(link.id, isShow);
             } else if (link && link.type === 'prime') {
                 await adb(`am start -a android.intent.action.VIEW -d "https://app.primevideo.com/watch?gti=${link.gti}" com.amazon.amazonvideo.livingroom`);
-            } else if (link && (link.type === 'apple' || link.type === 'disney' || link.type === 'generic') && link.url) {
+            } else if (link && (link.type === 'intent' || link.type === 'url') && link.url) {
                 await adb(`am start -a android.intent.action.VIEW -d "${link.url}" ${svc.pkg}`);
             } else {
                 toast(`📺 פותח ${svc.name}...`, 'info');
@@ -1008,7 +1012,7 @@ async function playOnStream(title, tmdbId) {
             await adbLaunch(svc.pkg);
         }
 
-        await sleep(2000);
+        await sleep(1000);
         await fetchStates();
         toast(`✅ ${svc.name} — מוכן!`, 'success');
     } catch (e) {
@@ -1018,15 +1022,25 @@ async function playOnStream(title, tmdbId) {
     unlockBusy();
 }
 
-async function netflixDeepLink(netflixId) {
-    toast(`🎬 Netflix — הפעלה...`, 'info');
-    await adbLaunch('com.netflix.ninja');
-    await sleep(5000);
+async function netflixDeepLink(netflixId, isShow) {
+    const path = isShow ? 'title' : 'watch';
+    const deepUrl = `https://www.netflix.com/${path}/${netflixId}`;
+
+    toast(`▶️ הפעלה...`, 'info');
+    const resp = await adb(`am start -W -a android.intent.action.VIEW -d "${deepUrl}" --es source 30 com.netflix.ninja`);
+
+    if (resp && resp.includes('delivered to currently running')) {
+        await sleep(2000);
+        return;
+    }
+
     toast(`👤 בחירת פרופיל...`, 'info');
+    await sleep(4000);
     await adb('input keyevent 23');
-    await sleep(8000);
-    toast(`▶️ מפעיל סרט...`, 'info');
-    await adb(`am start -W -a android.intent.action.VIEW -d "https://www.netflix.com/watch/${netflixId}" --es source 30 com.netflix.ninja`);
+    await sleep(6000);
+    toast(`▶️ מפעיל...`, 'info');
+    await adb(`am start -W -a android.intent.action.VIEW -d "${deepUrl}" --es source 30 com.netflix.ninja`);
+    await sleep(2000);
 }
 
 async function searchStream(query) {
