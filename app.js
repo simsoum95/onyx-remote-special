@@ -827,11 +827,11 @@ function initPlexEvents() {
    ============================================================ */
 const STREAM_SERVICES = {
     netflix:  { name: 'Netflix',      pkg: 'com.netflix.ninja',                 color: '#E50914', tmdbProvider: 8 },
-    disney:   { name: 'Disney+',      pkg: 'com.disney.disneyplus',             color: '#0063E5', tmdbProvider: 337 },
+    disney:   { name: 'Disney+',      pkg: 'com.disney.disneyplus',             color: '#0063E5', searchOnly: true },
     prime:    { name: 'Prime Video',  pkg: 'com.amazon.amazonvideo.livingroom', color: '#00A8E1', tmdbProvider: 119 },
     appletv:  { name: 'Apple TV',     pkg: 'com.apple.atve.androidtv.appletv',  color: '#a1a1a1', tmdbProvider: 350 },
-    youtube:  { name: 'YouTube',      pkg: 'com.google.android.youtube.tv',     color: '#FF0000' },
-    spotify:  { name: 'Spotify',      pkg: 'com.spotify.tv.android',            color: '#1DB954' },
+    youtube:  { name: 'YouTube',      pkg: 'com.google.android.youtube.tv',     color: '#FF0000', searchOnly: true },
+    spotify:  { name: 'Spotify',      pkg: 'com.spotify.tv.android',            color: '#1DB954', searchOnly: true },
 };
 
 let activeStreamId = null;
@@ -851,7 +851,31 @@ function openStreamBrowser(id) {
     document.getElementById('streamSearch').value = '';
     overlay.style.setProperty('--svc-color', svc.color);
 
-    loadStreamTrending();
+    const tabs = document.getElementById('streamTabs');
+    const content = document.getElementById('streamContent');
+
+    if (svc.searchOnly) {
+        tabs.style.display = 'none';
+        content.innerHTML = `<div class="stream-search-only">
+            <div class="stream-search-icon">${id === 'youtube' ? '📺' : id === 'spotify' ? '🎵' : '🎬'}</div>
+            <div class="stream-search-msg">חפש ב-${svc.name}</div>
+            <div class="stream-search-hint">הקלד למעלה ולחץ חיפוש</div>
+            <button class="stream-open-btn" id="streamQuickOpen">📺 פתח ${svc.name}</button>
+        </div>`;
+        document.getElementById('streamQuickOpen')?.addEventListener('click', async () => {
+            if (S.busy) return;
+            lockBusy(); closeStreamBrowser();
+            toast(`🎬 ${svc.name}...`, 'info');
+            try { await ensureCinema(); await adbLaunch(svc.pkg); await sleep(2000); toast(`✅ ${svc.name}`, 'success'); }
+            catch { toast('⚠️ שגיאה', 'error'); }
+            unlockBusy();
+        });
+    } else {
+        tabs.style.display = 'flex';
+        document.querySelectorAll('.stream-tab').forEach((t, i) => t.classList.toggle('active', i === 0));
+        activeStreamCat = 'popular';
+        loadStreamTrending();
+    }
     prelaunchApp(svc.pkg);
 }
 
@@ -1162,6 +1186,8 @@ async function netflixDeepLink(netflixId, isShow) {
 async function searchStream(query) {
     const content = document.getElementById('streamContent');
     if (!content) return;
+    const svc = STREAM_SERVICES[activeStreamId];
+    if (svc?.searchOnly) return;
     if (!query || query.length < 2) { loadStreamTrending(); return; }
 
     content.innerHTML = '<div class="plex-loading">מחפש...</div>';
@@ -1229,10 +1255,30 @@ function initStreamEvents() {
         unlockBusy();
     });
 
-    document.getElementById('streamSearchTV')?.addEventListener('click', () => {
+    document.getElementById('streamSearchTV')?.addEventListener('click', async () => {
         const query = document.getElementById('streamSearch')?.value?.trim();
-        if (!query) { toast('🔍 כתוב שם סרט', 'info'); return; }
-        playOnStream(query);
+        if (!query || S.busy) { toast('🔍 כתוב משהו לחפש', 'info'); return; }
+        const svc = STREAM_SERVICES[activeStreamId];
+        if (!svc) return;
+
+        if (activeStreamId === 'youtube' || activeStreamId === 'spotify' || svc.searchOnly) {
+            lockBusy(); closeStreamBrowser();
+            toast(`🔍 ${svc.name} — "${query}"...`, 'info');
+            try {
+                await ensureCinema();
+                if (activeStreamId === 'youtube') {
+                    await adb(`am start -a android.intent.action.VIEW -d "https://www.youtube.com/results?search_query=${encodeURIComponent(query)}" com.google.android.youtube.tv`);
+                } else if (activeStreamId === 'spotify') {
+                    await adb(`am start -a android.intent.action.VIEW -d "spotify:search:${encodeURIComponent(query)}" com.spotify.tv.android`);
+                } else {
+                    await adbLaunch(svc.pkg);
+                }
+                await sleep(2000); toast(`✅ ${svc.name}`, 'success');
+            } catch { toast('⚠️ שגיאה', 'error'); }
+            unlockBusy();
+        } else {
+            playOnStream(query);
+        }
     });
 
     const si = document.getElementById('streamSearch');
