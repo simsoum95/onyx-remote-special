@@ -950,6 +950,30 @@ function renderStreamItems(items, container) {
     });
 }
 
+async function getDeepLink(title, providerId) {
+    try {
+        const r = await fetch(`/api/justwatch?q=${encodeURIComponent(title)}`);
+        if (!r.ok) return null;
+        const data = await r.json();
+        for (const result of data.results || []) {
+            for (const offer of result.offers || []) {
+                if (offer.providerId === providerId && offer.url) {
+                    const m = offer.url.match(/netflix\.com\/title\/(\d+)/);
+                    if (m) return { type: 'netflix', id: m[1] };
+                    const prime = offer.deeplink?.match(/gti=([^&"#]+)/);
+                    if (prime) return { type: 'prime', gti: prime[1] };
+                    const apple = offer.deeplink?.match(/intent:\/\/(.+?)#/);
+                    if (apple) return { type: 'apple', url: 'https://' + apple[1] };
+                    const disney = offer.deeplink?.match(/intent:\/\/(.+?)#/);
+                    if (disney) return { type: 'disney', url: 'https://' + disney[1] };
+                    return { type: 'generic', url: offer.url, deeplink: offer.deeplink };
+                }
+            }
+        }
+    } catch (e) { console.error('[JustWatch]', e); }
+    return null;
+}
+
 async function playOnStream(title, tmdbId) {
     if (!activeStreamId || S.busy) return;
     const svc = STREAM_SERVICES[activeStreamId];
@@ -960,27 +984,27 @@ async function playOnStream(title, tmdbId) {
 
     try {
         await ensureCinema();
+        toast(`🎬 ${svc.name} — "${searchText}"...`, 'info');
 
         if (sid === 'youtube') {
-            toast(`📺 YouTube — "${searchText}"...`, 'info');
             await adb(`am start -a android.intent.action.VIEW -d "https://www.youtube.com/results?search_query=${encodeURIComponent(searchText)}" com.google.android.youtube.tv`);
         } else if (sid === 'spotify') {
-            toast(`🎵 Spotify — "${searchText}"...`, 'info');
             await adb(`am start -a android.intent.action.VIEW -d "spotify:search:${encodeURIComponent(searchText)}" com.spotify.tv.android`);
-        } else if (sid === 'netflix') {
-            toast(`🎬 Netflix — "${searchText}"...`, 'info');
-            await launchAndSearch('com.netflix.ninja', searchText);
-        } else if (sid === 'disney') {
-            toast(`🎬 Disney+ — "${searchText}"...`, 'info');
-            await launchAndSearch('com.disney.disneyplus', searchText);
-        } else if (sid === 'prime') {
-            toast(`🎬 Prime Video — "${searchText}"...`, 'info');
-            await launchAndSearch('com.amazon.amazonvideo.livingroom', searchText);
-        } else if (sid === 'appletv') {
-            toast(`🎬 Apple TV — "${searchText}"...`, 'info');
-            await launchAndSearch('com.apple.atve.androidtv.appletv', searchText);
+        } else if (svc.tmdbProvider) {
+            toast(`🔍 חיפוש קישור ישיר...`, 'info');
+            const link = await getDeepLink(searchText, svc.tmdbProvider);
+
+            if (link && link.type === 'netflix') {
+                await netflixDeepLink(link.id);
+            } else if (link && link.type === 'prime') {
+                await adb(`am start -a android.intent.action.VIEW -d "https://app.primevideo.com/watch?gti=${link.gti}" com.amazon.amazonvideo.livingroom`);
+            } else if (link && (link.type === 'apple' || link.type === 'disney' || link.type === 'generic') && link.url) {
+                await adb(`am start -a android.intent.action.VIEW -d "${link.url}" ${svc.pkg}`);
+            } else {
+                toast(`📺 פותח ${svc.name}...`, 'info');
+                await adbLaunch(svc.pkg);
+            }
         } else {
-            toast(`🎬 ${svc.name}...`, 'info');
             await adbLaunch(svc.pkg);
         }
 
@@ -994,13 +1018,15 @@ async function playOnStream(title, tmdbId) {
     unlockBusy();
 }
 
-async function launchAndSearch(pkg, query) {
-    await adbLaunch(pkg);
-    await sleep(4000);
-
-    const safe = query.replace(/"/g, '\\"').replace(/ /g, '%s');
-    await adb(`am start -a "com.google.android.gms.actions.SEARCH_ACTION" --es query "${safe}" ${pkg}`);
-    await sleep(3000);
+async function netflixDeepLink(netflixId) {
+    toast(`🎬 Netflix — הפעלה...`, 'info');
+    await adbLaunch('com.netflix.ninja');
+    await sleep(5000);
+    toast(`👤 בחירת פרופיל...`, 'info');
+    await adb('input keyevent 23');
+    await sleep(8000);
+    toast(`▶️ מפעיל סרט...`, 'info');
+    await adb(`am start -W -a android.intent.action.VIEW -d "https://www.netflix.com/watch/${netflixId}" --es source 30 com.netflix.ninja`);
 }
 
 async function searchStream(query) {
