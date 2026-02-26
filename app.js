@@ -837,6 +837,7 @@ const STREAM_SERVICES = {
 let activeStreamId = null;
 let streamSearchTimer = null;
 const tmdbCache = {};
+let streamPage = { movie: 0, tv: 0, loading: false, done: false };
 
 function openStreamBrowser(id) {
     activeStreamId = id;
@@ -884,6 +885,18 @@ const GENRE_MAP = {
 
 let activeStreamCat = 'popular';
 
+function streamBaseQuery() {
+    const svc = STREAM_SERVICES[activeStreamId];
+    if (!svc?.tmdbProvider) return '';
+    return `with_watch_providers=${svc.tmdbProvider}&watch_region=IL&sort_by=popularity.desc&language=he-IL`;
+}
+
+function streamGenreParam() {
+    const g = GENRE_MAP[activeStreamCat];
+    if (!g) return { movie: '', tv: '' };
+    return { movie: `&with_genres=${g.movie}`, tv: `&with_genres=${g.tv}` };
+}
+
 async function loadStreamTrending(cat) {
     if (cat) activeStreamCat = cat;
     else cat = activeStreamCat;
@@ -893,65 +906,118 @@ async function loadStreamTrending(cat) {
     const svc = STREAM_SERVICES[activeStreamId];
     if (!svc) return;
 
-    const cacheKey = `${activeStreamId}_${cat}`;
-    if (tmdbCache[cacheKey]) { renderStreamItems(tmdbCache[cacheKey], content); return; }
-
+    streamPage = { movie: 1, tv: 1, loading: false, done: false };
     content.innerHTML = '<div class="plex-loading">טוען...</div>';
+
     try {
         let items = [];
         if (svc.tmdbProvider) {
-            const base = `with_watch_providers=${svc.tmdbProvider}&watch_region=IL&sort_by=popularity.desc&language=he-IL`;
-            const genre = GENRE_MAP[cat];
+            const base = streamBaseQuery();
+            const genre = streamGenreParam();
 
             if (cat === 'movies') {
-                const [p1, p2, p3] = await Promise.all([
-                    tmdbGet(`/discover/movie?${base}&page=1`),
-                    tmdbGet(`/discover/movie?${base}&page=2`),
-                    tmdbGet(`/discover/movie?${base}&page=3`),
+                const [p1, p2] = await Promise.all([
+                    tmdbGet(`/discover/movie?${base}${genre.movie}&page=1`),
+                    tmdbGet(`/discover/movie?${base}${genre.movie}&page=2`),
                 ]);
-                items = [...(p1?.results||[]), ...(p2?.results||[]), ...(p3?.results||[])].map(mapMovie);
+                items = [...(p1?.results||[]), ...(p2?.results||[])].map(mapMovie);
+                streamPage.movie = 2; streamPage.tv = 0;
             } else if (cat === 'tv') {
-                const [p1, p2, p3] = await Promise.all([
-                    tmdbGet(`/discover/tv?${base}&page=1`),
-                    tmdbGet(`/discover/tv?${base}&page=2`),
-                    tmdbGet(`/discover/tv?${base}&page=3`),
+                const [p1, p2] = await Promise.all([
+                    tmdbGet(`/discover/tv?${base}${genre.tv}&page=1`),
+                    tmdbGet(`/discover/tv?${base}${genre.tv}&page=2`),
                 ]);
-                items = [...(p1?.results||[]), ...(p2?.results||[]), ...(p3?.results||[])].map(mapShow);
-            } else if (genre) {
-                const [movies, shows] = await Promise.all([
-                    tmdbGet(`/discover/movie?${base}&with_genres=${genre.movie}&page=1`),
-                    tmdbGet(`/discover/tv?${base}&with_genres=${genre.tv}&page=1`),
-                ]);
-                items = interleave((movies?.results||[]).map(mapMovie), (shows?.results||[]).map(mapShow));
+                items = [...(p1?.results||[]), ...(p2?.results||[])].map(mapShow);
+                streamPage.tv = 2; streamPage.movie = 0;
             } else {
-                const [m1, m2, t1, t2] = await Promise.all([
-                    tmdbGet(`/discover/movie?${base}&page=1`),
-                    tmdbGet(`/discover/movie?${base}&page=2`),
-                    tmdbGet(`/discover/tv?${base}&page=1`),
-                    tmdbGet(`/discover/tv?${base}&page=2`),
+                const [m1, t1] = await Promise.all([
+                    tmdbGet(`/discover/movie?${base}${genre.movie}&page=1`),
+                    tmdbGet(`/discover/tv?${base}${genre.tv}&page=1`),
                 ]);
-                const movies = [...(m1?.results||[]), ...(m2?.results||[])].map(mapMovie);
-                const shows = [...(t1?.results||[]), ...(t2?.results||[])].map(mapShow);
-                items = interleave(movies, shows);
+                items = interleave((m1?.results||[]).map(mapMovie), (t1?.results||[]).map(mapShow));
+                streamPage.movie = 1; streamPage.tv = 1;
             }
         } else {
             const data = await tmdbGet('/trending/all/week?language=he-IL');
             items = (data?.results || []).map(r => ({
-                title: r.title || r.name || '',
-                origTitle: r.original_title || r.original_name || '',
+                title: r.title || r.name || '', origTitle: r.original_title || r.original_name || '',
                 image: tmdbPoster(r.poster_path),
                 year: (r.release_date || r.first_air_date || '').substring(0, 4),
-                category: r.media_type === 'tv' ? 'סדרה' : 'סרט',
-                tmdbId: r.id,
+                category: r.media_type === 'tv' ? 'סדרה' : 'סרט', tmdbId: r.id,
             }));
+            streamPage.done = true;
         }
         items = items.filter(i => i.image);
-        tmdbCache[cacheKey] = items;
         renderStreamItems(items, content);
     } catch (e) {
         console.error('[TMDB]', e);
         content.innerHTML = '<div class="plex-loading">שגיאה בטעינה</div>';
     }
+}
+
+async function loadMoreStream() {
+    if (streamPage.loading || streamPage.done) return;
+    streamPage.loading = true;
+
+    const svc = STREAM_SERVICES[activeStreamId];
+    if (!svc?.tmdbProvider) { streamPage.done = true; streamPage.loading = false; return; }
+
+    const base = streamBaseQuery();
+    const genre = streamGenreParam();
+    const cat = activeStreamCat;
+
+    try {
+        let newItems = [];
+        if (cat === 'movies' || cat === 'tv') {
+            const type = cat === 'movies' ? 'movie' : 'tv';
+            const pageKey = cat === 'movies' ? 'movie' : 'tv';
+            const nextPage = streamPage[pageKey] + 1;
+            const genreStr = type === 'movie' ? genre.movie : genre.tv;
+            const data = await tmdbGet(`/discover/${type}?${base}${genreStr}&page=${nextPage}`);
+            const results = data?.results || [];
+            if (!results.length) { streamPage.done = true; streamPage.loading = false; return; }
+            newItems = results.map(type === 'movie' ? mapMovie : mapShow).filter(i => i.image);
+            streamPage[pageKey] = nextPage;
+        } else {
+            const mp = streamPage.movie + 1;
+            const tp = streamPage.tv + 1;
+            const [movies, shows] = await Promise.all([
+                tmdbGet(`/discover/movie?${base}${genre.movie}&page=${mp}`),
+                tmdbGet(`/discover/tv?${base}${genre.tv}&page=${tp}`),
+            ]);
+            const mr = movies?.results || [];
+            const tr = shows?.results || [];
+            if (!mr.length && !tr.length) { streamPage.done = true; streamPage.loading = false; return; }
+            newItems = interleave(mr.map(mapMovie), tr.map(mapShow)).filter(i => i.image);
+            streamPage.movie = mp; streamPage.tv = tp;
+        }
+        appendStreamItems(newItems);
+    } catch (e) { console.error('[TMDB loadMore]', e); }
+    streamPage.loading = false;
+}
+
+function appendStreamItems(items) {
+    const content = document.getElementById('streamContent');
+    if (!content) return;
+    let grid = content.querySelector('.plex-grid');
+    if (!grid) { renderStreamItems(items, content); return; }
+
+    const esc = s => (s || '').replace(/"/g, '&quot;');
+    const html = items.map(item => {
+        const isShow = item.category === 'סדרה' ? '1' : '0';
+        return `<div class="plex-card stream-card" data-title="${esc(item.origTitle || item.title)}" data-tmdb="${item.tmdbId || ''}" data-show="${isShow}">
+            ${item.image ? `<img src="${item.image}" alt="${esc(item.title)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+            <div class="plex-card-info">
+                <div class="plex-card-title">${item.title}</div>
+                <div class="plex-card-year">${item.category} ${item.year ? '• ' + item.year : ''}</div>
+            </div>
+        </div>`;
+    }).join('');
+    grid.insertAdjacentHTML('beforeend', html);
+    grid.querySelectorAll('.stream-card:not([data-bound])').forEach(c => {
+        c.dataset.bound = '1';
+        c.addEventListener('click', () => playOnStream(c.dataset.title, c.dataset.tmdb, c.dataset.show === '1'));
+    });
 }
 
 function mapMovie(m) {
@@ -1138,6 +1204,15 @@ function initStreamEvents() {
             loadStreamTrending(tab.dataset.cat);
         });
     });
+
+    const sc = document.getElementById('streamContent');
+    if (sc) {
+        sc.addEventListener('scroll', () => {
+            if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 400) {
+                loadMoreStream();
+            }
+        });
+    }
 
     document.getElementById('streamOpenApp')?.addEventListener('click', async () => {
         if (!activeStreamId || S.busy) return;
