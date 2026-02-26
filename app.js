@@ -584,6 +584,8 @@ function initEvents() {
    PLEX BROWSER
    ============================================================ */
 const PLEX_MACHINE = '7c84d507caa716dcec1ecede058c0a3c854f264e';
+const PLEX_RELAY = 'https://172-104-247-122.7f129a0c76254e08912ab40133e94d85.plex.direct:8443';
+const PLEX_TK = 'nkK9tSbu5HPYs1yXVukC';
 
 async function plexGet(path) {
     const r = await fetch(`/api/plex?path=${encodeURIComponent(path)}`);
@@ -593,8 +595,7 @@ async function plexGet(path) {
 
 function plexThumb(thumbPath, w = 200, h = 300) {
     if (!thumbPath) return '';
-    const transcoded = `/photo/:/transcode?width=${w}&height=${h}&minSize=1&upscale=1&url=${encodeURIComponent(thumbPath)}`;
-    return `/api/plex?path=${encodeURIComponent(transcoded)}&img=1`;
+    return `${PLEX_RELAY}/photo/:/transcode?width=${w}&height=${h}&minSize=1&upscale=1&url=${encodeURIComponent(thumbPath)}&X-Plex-Token=${PLEX_TK}`;
 }
 
 function openPlexBrowser() {
