@@ -130,12 +130,19 @@
         <div id="plexOverlay" class="plex-overlay hidden">
             <div class="plex-header">
                 <button class="plex-back" id="plexClose">✕</button>
-                <div class="plex-title">Plex</div>
-                <div class="plex-tabs">
+                <div class="plex-title">PLEX</div>
+                <div class="plex-search-wrap">
+                    <input type="search" class="plex-search" id="plexSearch" placeholder="🔍 חיפוש..." autocomplete="off">
+                </div>
+                <div class="plex-tabs" id="plexTabs">
                     <button class="plex-tab active" data-pcat="onDeck">ממשיכים</button>
-                    <button class="plex-tab" data-pcat="movies">סרטים</button>
-                    <button class="plex-tab" data-pcat="shows">סדרות</button>
-                    <button class="plex-tab" data-pcat="kids">ילדים</button>
+                    <button class="plex-tab" data-pcat="1">סרטים</button>
+                    <button class="plex-tab" data-pcat="2">ילדים</button>
+                    <button class="plex-tab" data-pcat="8">סדרות</button>
+                    <button class="plex-tab" data-pcat="5">Shirel</button>
+                    <button class="plex-tab" data-pcat="11">Shirel Series</button>
+                    <button class="plex-tab" data-pcat="3">Louis De Funès</button>
+                    <button class="plex-tab" data-pcat="9">ישראלי</button>
                 </div>
             </div>
             <div class="plex-content" id="plexContent">

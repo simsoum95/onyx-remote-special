@@ -416,8 +416,17 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .plex-title {
     text-align: center; font-family: var(--tech);
     font-size: 0.85rem; font-weight: 700; color: #E5A00D;
-    letter-spacing: 3px; margin-bottom: 10px;
+    letter-spacing: 3px; margin-bottom: 8px;
 }
+.plex-search-wrap { padding: 0 0 8px; }
+.plex-search {
+    width: 100%; padding: 10px 14px; border-radius: 12px;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--gb);
+    color: var(--t1); font-size: 0.82rem; font-family: var(--body);
+    outline: none; transition: var(--tr); direction: rtl;
+}
+.plex-search:focus { border-color: rgba(229,160,13,0.4); background: rgba(255,255,255,0.1); }
+.plex-search::placeholder { color: var(--t3); }
 .plex-tabs {
     display: flex; gap: 6px; overflow-x: auto;
     scrollbar-width: none; -ms-overflow-style: none;
@@ -469,6 +478,32 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 .plex-card-progress-fill {
     height: 100%; background: #E5A00D; border-radius: 0 2px 0 0;
+}
+
+.plex-show-back {
+    padding: 10px 4px; margin-bottom: 8px;
+    color: #E5A00D; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; direction: ltr;
+}
+.plex-show-back:active { opacity: 0.6; }
+
+.plex-episodes { display: flex; flex-direction: column; gap: 8px; }
+.plex-episode {
+    position: relative; display: flex; gap: 10px; align-items: center;
+    padding: 8px; border-radius: 10px;
+    background: var(--glass); border: 1px solid var(--gb);
+    cursor: pointer; transition: var(--tr); overflow: hidden;
+}
+.plex-episode:active { transform: scale(0.97); }
+.plex-ep-thumb {
+    width: 120px; height: 68px; object-fit: cover;
+    border-radius: 6px; flex-shrink: 0;
+}
+.plex-ep-info { flex: 1; min-width: 0; }
+.plex-ep-num { font-size: 0.65rem; color: #E5A00D; font-weight: 700; margin-bottom: 2px; }
+.plex-ep-title {
+    font-size: 0.75rem; color: var(--t1); font-weight: 500;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
 /* ============================================================

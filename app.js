@@ -598,13 +598,56 @@ function plexThumb(thumbPath, w = 200, h = 300) {
     return `${PLEX_RELAY}/photo/:/transcode?width=${w}&height=${h}&minSize=1&upscale=1&url=${encodeURIComponent(thumbPath)}&X-Plex-Token=${PLEX_TK}`;
 }
 
+let plexSearchTimer = null;
+
 function openPlexBrowser() {
     document.getElementById('plexOverlay')?.classList.remove('hidden');
+    const si = document.getElementById('plexSearch');
+    if (si) si.value = '';
     loadPlexCategory('onDeck');
 }
 
 function closePlexBrowser() {
     document.getElementById('plexOverlay')?.classList.add('hidden');
+}
+
+function renderPlexItems(items, container) {
+    if (!items.length) {
+        container.innerHTML = '<div class="plex-loading">אין תוכן</div>';
+        return;
+    }
+
+    container.innerHTML = `<div class="plex-grid">${items.map(item => {
+        const title = item.title || item.grandparentTitle || '';
+        const year = item.year || '';
+        const thumb = item.thumb || item.parentThumb || item.grandparentThumb || '';
+        const progress = item.viewOffset && item.duration
+            ? Math.round((item.viewOffset / item.duration) * 100) : 0;
+        const rKey = item.ratingKey;
+        const isEpisode = item.type === 'episode';
+        const isShow = item.type === 'show';
+        const displayTitle = isEpisode ? (item.grandparentTitle || title) : title;
+        const sub = isEpisode ? `S${item.parentIndex}E${item.index}` : year;
+
+        return `<div class="plex-card" data-rkey="${rKey}" data-type="${item.type}">
+            <img src="${plexThumb(thumb)}" alt="${displayTitle}" loading="lazy" onerror="this.style.display='none'">
+            <div class="plex-card-info">
+                <div class="plex-card-title">${displayTitle}</div>
+                <div class="plex-card-year">${sub}</div>
+            </div>
+            ${progress > 0 ? `<div class="plex-card-progress"><div class="plex-card-progress-fill" style="width:${progress}%"></div></div>` : ''}
+        </div>`;
+    }).join('')}</div>`;
+
+    container.querySelectorAll('.plex-card').forEach(c => {
+        c.addEventListener('click', () => {
+            if (c.dataset.type === 'show') {
+                loadShowSeasons(c.dataset.rkey);
+            } else {
+                playPlexItem(c.dataset.rkey, c.dataset.type === 'episode' ? 4 : 1);
+            }
+        });
+    });
 }
 
 async function loadPlexCategory(cat) {
@@ -618,58 +661,125 @@ async function loadPlexCategory(cat) {
         let data;
         if (cat === 'onDeck') {
             data = await plexGet('/library/onDeck');
-        } else if (cat === 'movies') {
-            data = await plexGet('/library/sections/1/recentlyAdded');
-        } else if (cat === 'shows') {
-            data = await plexGet('/library/sections/8/recentlyAdded');
-        } else if (cat === 'kids') {
-            data = await plexGet('/library/sections/2/recentlyAdded');
+        } else {
+            data = await plexGet(`/library/sections/${cat}/all?sort=addedAt:desc`);
         }
 
         const items = data?.MediaContainer?.Metadata || [];
-        if (items.length === 0) {
-            content.innerHTML = '<div class="plex-loading">אין תוכן</div>';
-            return;
-        }
-
-        content.innerHTML = `<div class="plex-grid">${items.slice(0, 30).map(item => {
-            const title = item.title || item.grandparentTitle || '';
-            const year = item.year || '';
-            const thumb = item.thumb || item.parentThumb || item.grandparentThumb || '';
-            const progress = item.viewOffset && item.duration
-                ? Math.round((item.viewOffset / item.duration) * 100) : 0;
-            const rKey = item.ratingKey;
-            const isEpisode = item.type === 'episode';
-            const displayTitle = isEpisode ? (item.grandparentTitle || title) : title;
-            const sub = isEpisode ? `S${item.parentIndex}E${item.index}` : year;
-
-            return `<div class="plex-card" data-rkey="${rKey}" data-type="${item.type}">
-                <img src="${plexThumb(thumb)}" alt="${displayTitle}" loading="lazy">
-                <div class="plex-card-info">
-                    <div class="plex-card-title">${displayTitle}</div>
-                    <div class="plex-card-year">${sub}</div>
-                </div>
-                ${progress > 0 ? `<div class="plex-card-progress"><div class="plex-card-progress-fill" style="width:${progress}%"></div></div>` : ''}
-            </div>`;
-        }).join('')}</div>`;
-
-        content.querySelectorAll('.plex-card').forEach(c => {
-            c.addEventListener('click', () => playPlexItem(c.dataset.rkey));
-        });
+        renderPlexItems(items, content);
     } catch (e) {
         console.error('[Plex]', e);
         content.innerHTML = '<div class="plex-loading">שגיאה בטעינה</div>';
     }
 }
 
-async function playPlexItem(ratingKey) {
+async function loadShowSeasons(showKey) {
+    const content = document.getElementById('plexContent');
+    if (!content) return;
+    content.innerHTML = '<div class="plex-loading">טוען עונות...</div>';
+
+    try {
+        const data = await plexGet(`/library/metadata/${showKey}/children`);
+        const seasons = data?.MediaContainer?.Metadata || [];
+        if (!seasons.length) { content.innerHTML = '<div class="plex-loading">אין עונות</div>'; return; }
+
+        const showTitle = data?.MediaContainer?.parentTitle || '';
+
+        content.innerHTML = `<div class="plex-show-back" id="plexShowBack">← ${showTitle}</div>
+        <div class="plex-grid">${seasons.map(s => {
+            const thumb = s.thumb || s.parentThumb || '';
+            return `<div class="plex-card" data-skey="${s.ratingKey}">
+                <img src="${plexThumb(thumb)}" alt="${s.title}" loading="lazy" onerror="this.style.display='none'">
+                <div class="plex-card-info"><div class="plex-card-title">${s.title}</div></div>
+            </div>`;
+        }).join('')}</div>`;
+
+        document.getElementById('plexShowBack')?.addEventListener('click', () => {
+            const activeTab = document.querySelector('.plex-tab.active');
+            loadPlexCategory(activeTab?.dataset.pcat || 'onDeck');
+        });
+
+        content.querySelectorAll('.plex-card').forEach(c => {
+            c.addEventListener('click', () => loadSeasonEpisodes(c.dataset.skey));
+        });
+    } catch (e) {
+        console.error('[Plex]', e);
+        content.innerHTML = '<div class="plex-loading">שגיאה</div>';
+    }
+}
+
+async function loadSeasonEpisodes(seasonKey) {
+    const content = document.getElementById('plexContent');
+    if (!content) return;
+    content.innerHTML = '<div class="plex-loading">טוען פרקים...</div>';
+
+    try {
+        const data = await plexGet(`/library/metadata/${seasonKey}/children`);
+        const episodes = data?.MediaContainer?.Metadata || [];
+        if (!episodes.length) { content.innerHTML = '<div class="plex-loading">אין פרקים</div>'; return; }
+
+        const showTitle = episodes[0]?.grandparentTitle || '';
+        const seasonTitle = data?.MediaContainer?.parentTitle || episodes[0]?.parentTitle || '';
+
+        content.innerHTML = `<div class="plex-show-back" id="plexEpBack">← ${showTitle} — ${seasonTitle}</div>
+        <div class="plex-episodes">${episodes.map(ep => {
+            const thumb = ep.thumb || ep.parentThumb || '';
+            const progress = ep.viewOffset && ep.duration ? Math.round((ep.viewOffset / ep.duration) * 100) : 0;
+            return `<div class="plex-episode" data-rkey="${ep.ratingKey}">
+                <img class="plex-ep-thumb" src="${plexThumb(thumb, 300, 170)}" alt="" loading="lazy" onerror="this.style.display='none'">
+                <div class="plex-ep-info">
+                    <div class="plex-ep-num">פרק ${ep.index}</div>
+                    <div class="plex-ep-title">${ep.title}</div>
+                </div>
+                ${progress > 0 ? `<div class="plex-card-progress"><div class="plex-card-progress-fill" style="width:${progress}%"></div></div>` : ''}
+            </div>`;
+        }).join('')}</div>`;
+
+        document.getElementById('plexEpBack')?.addEventListener('click', () => {
+            const parentKey = episodes[0]?.parentRatingKey;
+            if (parentKey) {
+                const grandparentKey = episodes[0]?.grandparentRatingKey;
+                if (grandparentKey) loadShowSeasons(grandparentKey);
+            }
+        });
+
+        content.querySelectorAll('.plex-episode').forEach(c => {
+            c.addEventListener('click', () => playPlexItem(c.dataset.rkey, 4));
+        });
+    } catch (e) {
+        console.error('[Plex]', e);
+        content.innerHTML = '<div class="plex-loading">שגיאה</div>';
+    }
+}
+
+async function plexSearch(query) {
+    const content = document.getElementById('plexContent');
+    if (!content) return;
+    if (!query || query.length < 2) { loadPlexCategory('onDeck'); return; }
+
+    content.innerHTML = '<div class="plex-loading">מחפש...</div>';
+    document.querySelectorAll('.plex-tab').forEach(t => t.classList.remove('active'));
+
+    try {
+        const data = await plexGet(`/search?query=${encodeURIComponent(query)}&limit=30`);
+        const items = (data?.MediaContainer?.Metadata || []).filter(
+            i => i.type === 'movie' || i.type === 'show' || i.type === 'episode'
+        );
+        renderPlexItems(items, content);
+    } catch (e) {
+        console.error('[Plex]', e);
+        content.innerHTML = '<div class="plex-loading">שגיאה בחיפוש</div>';
+    }
+}
+
+async function playPlexItem(ratingKey, metadataType = 1) {
     if (S.busy) return;
     lockBusy();
     closePlexBrowser();
     toast('🎞️ Plex — מפעיל...', 'info');
     try {
         await ensureCinema();
-        const deepLink = `plex://play/?metadataKey=%2Flibrary%2Fmetadata%2F${ratingKey}&metadataType=1&serverID=${PLEX_MACHINE}`;
+        const deepLink = `plex://play/?metadataKey=%2Flibrary%2Fmetadata%2F${ratingKey}&metadataType=${metadataType}&serverID=${PLEX_MACHINE}`;
         await adb(`am start -a android.intent.action.VIEW -d "${deepLink}"`);
         await sleep(4000);
         await fetchStates();
@@ -684,8 +794,18 @@ async function playPlexItem(ratingKey) {
 function initPlexEvents() {
     document.getElementById('plexClose')?.addEventListener('click', closePlexBrowser);
     document.querySelectorAll('.plex-tab').forEach(t => {
-        t.addEventListener('click', () => loadPlexCategory(t.dataset.pcat));
+        t.addEventListener('click', () => {
+            document.getElementById('plexSearch').value = '';
+            loadPlexCategory(t.dataset.pcat);
+        });
     });
+    const searchInput = document.getElementById('plexSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(plexSearchTimer);
+            plexSearchTimer = setTimeout(() => plexSearch(searchInput.value.trim()), 400);
+        });
+    }
 }
 
 /* ============================================================
