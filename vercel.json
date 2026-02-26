@@ -1,11 +1,13 @@
 {
     "functions": {
         "api/ha.js": { "maxDuration": 15 },
-        "api/plex.js": { "maxDuration": 25 }
+        "api/plex.js": { "maxDuration": 25 },
+        "api/tmdb.js": { "maxDuration": 10 }
     },
     "rewrites": [
         { "source": "/api/ha", "destination": "/api/ha" },
         { "source": "/api/plex", "destination": "/api/plex" },
+        { "source": "/api/tmdb", "destination": "/api/tmdb" },
         { "source": "/((?!api).*)", "destination": "/index.html" }
     ],
     "headers": [

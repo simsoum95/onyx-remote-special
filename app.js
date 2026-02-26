@@ -826,17 +826,17 @@ function initPlexEvents() {
    Sources: iTunes RSS (trending) + TVmaze (séries) — aucune clé API nécessaire
    ============================================================ */
 const STREAM_SERVICES = {
-    netflix:  { name: 'Netflix',     pkg: 'com.netflix.ninja',                    color: '#E50914' },
-    disney:   { name: 'Disney+',     pkg: 'com.disney.disneyplus',                color: '#0063E5' },
-    prime:    { name: 'Prime Video', pkg: 'com.amazon.amazonvideo.livingroom',    color: '#00A8E1' },
-    appletv:  { name: 'Apple TV',    pkg: 'com.apple.atve.androidtv.appletv',     color: '#a1a1a1' },
-    youtube:  { name: 'YouTube',     pkg: 'com.google.android.youtube.tv',        color: '#FF0000' },
-    spotify:  { name: 'Spotify',     pkg: 'com.spotify.tv.android',               color: '#1DB954' },
+    netflix:  { name: 'Netflix',      pkg: 'com.netflix.ninja',                 color: '#E50914', tmdbProvider: 8 },
+    disney:   { name: 'Disney+',      pkg: 'com.disney.disneyplus',             color: '#0063E5', tmdbProvider: 337 },
+    prime:    { name: 'Prime Video',  pkg: 'com.amazon.amazonvideo.livingroom', color: '#00A8E1', tmdbProvider: 119 },
+    appletv:  { name: 'Apple TV',     pkg: 'com.apple.atve.androidtv.appletv',  color: '#a1a1a1', tmdbProvider: 350 },
+    youtube:  { name: 'YouTube',      pkg: 'com.google.android.youtube.tv',     color: '#FF0000' },
+    spotify:  { name: 'Spotify',      pkg: 'com.spotify.tv.android',            color: '#1DB954' },
 };
 
 let activeStreamId = null;
 let streamSearchTimer = null;
-let trendingCache = null;
+const tmdbCache = {};
 
 function openStreamBrowser(id) {
     activeStreamId = id;
@@ -858,55 +858,105 @@ function closeStreamBrowser() {
     activeStreamId = null;
 }
 
+async function tmdbGet(path) {
+    const r = await fetch(`/api/tmdb?path=${encodeURIComponent(path)}`);
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+}
+
+function tmdbPoster(path, w = 342) {
+    if (!path) return '';
+    return `https://image.tmdb.org/t/p/w${w}${path}`;
+}
+
 async function loadStreamTrending() {
     const content = document.getElementById('streamContent');
     if (!content) return;
+    const svc = STREAM_SERVICES[activeStreamId];
+    if (!svc) return;
 
-    if (trendingCache) { renderStreamItems(trendingCache, content); return; }
+    const cacheKey = activeStreamId;
+    if (tmdbCache[cacheKey]) { renderStreamItems(tmdbCache[cacheKey], content); return; }
 
     content.innerHTML = '<div class="plex-loading">טוען...</div>';
     try {
-        const r = await fetch('https://itunes.apple.com/il/rss/topmovies/limit=50/json');
-        const data = await r.json();
-        trendingCache = (data?.feed?.entry || []).map(e => ({
-            title: e['im:name']?.label || '',
-            image: (e['im:image']?.[2]?.label || '').replace(/\d+x\d+bb/, '400x600bb'),
-            year: e['im:releaseDate']?.attributes?.label?.match(/\d{4}/)?.[0] || '',
-            category: e.category?.attributes?.label || '',
-        }));
-        renderStreamItems(trendingCache, content);
+        let items = [];
+        if (svc.tmdbProvider) {
+            const [movies, shows] = await Promise.all([
+                tmdbGet(`/discover/movie?with_watch_providers=${svc.tmdbProvider}&watch_region=IL&sort_by=popularity.desc&language=he-IL&page=1`),
+                tmdbGet(`/discover/tv?with_watch_providers=${svc.tmdbProvider}&watch_region=IL&sort_by=popularity.desc&language=he-IL&page=1`),
+            ]);
+            const movieItems = (movies?.results || []).map(m => ({
+                title: m.title || m.original_title || '',
+                origTitle: m.original_title || m.title || '',
+                image: tmdbPoster(m.poster_path),
+                year: (m.release_date || '').substring(0, 4),
+                category: 'סרט',
+                tmdbId: m.id,
+            }));
+            const tvItems = (shows?.results || []).map(s => ({
+                title: s.name || s.original_name || '',
+                origTitle: s.original_name || s.name || '',
+                image: tmdbPoster(s.poster_path),
+                year: (s.first_air_date || '').substring(0, 4),
+                category: 'סדרה',
+                tmdbId: s.id,
+            }));
+            items = interleave(movieItems, tvItems).slice(0, 40);
+        } else {
+            const data = await tmdbGet('/trending/all/week?language=he-IL');
+            items = (data?.results || []).map(r => ({
+                title: r.title || r.name || '',
+                image: tmdbPoster(r.poster_path),
+                year: (r.release_date || r.first_air_date || '').substring(0, 4),
+                category: r.media_type === 'tv' ? 'סדרה' : 'סרט',
+                tmdbId: r.id,
+            }));
+        }
+        tmdbCache[cacheKey] = items;
+        renderStreamItems(items, content);
     } catch (e) {
-        console.error('[Stream]', e);
+        console.error('[TMDB]', e);
         content.innerHTML = '<div class="plex-loading">שגיאה בטעינה</div>';
     }
+}
+
+function interleave(a, b) {
+    const result = [];
+    const max = Math.max(a.length, b.length);
+    for (let i = 0; i < max; i++) {
+        if (i < a.length) result.push(a[i]);
+        if (i < b.length) result.push(b[i]);
+    }
+    return result;
 }
 
 function renderStreamItems(items, container) {
     if (!items.length) { container.innerHTML = '<div class="plex-loading">אין תוכן</div>'; return; }
 
-    container.innerHTML = `<div class="plex-grid">${items.map((item, i) =>
-        `<div class="plex-card stream-card" data-title="${item.title.replace(/"/g, '&quot;')}">
-            ${item.image ? `<img src="${item.image}" alt="${item.title}" loading="lazy" onerror="this.style.display='none'">` : ''}
+    const esc = s => (s || '').replace(/"/g, '&quot;');
+    container.innerHTML = `<div class="plex-grid">${items.map(item =>
+        `<div class="plex-card stream-card" data-title="${esc(item.origTitle || item.title)}" data-tmdb="${item.tmdbId || ''}">
+            ${item.image ? `<img src="${item.image}" alt="${esc(item.title)}" loading="lazy" onerror="this.style.display='none'">` : ''}
             <div class="plex-card-info">
                 <div class="plex-card-title">${item.title}</div>
-                <div class="plex-card-year">${item.year || item.category}</div>
+                <div class="plex-card-year">${item.category} ${item.year ? '• ' + item.year : ''}</div>
             </div>
         </div>`
     ).join('')}</div>`;
 
     container.querySelectorAll('.stream-card').forEach(c => {
-        c.addEventListener('click', () => playOnStream(c.dataset.title));
+        c.addEventListener('click', () => playOnStream(c.dataset.title, c.dataset.tmdb));
     });
 }
 
-async function playOnStream(title) {
+async function playOnStream(title, tmdbId) {
     if (!activeStreamId || S.busy) return;
     const svc = STREAM_SERVICES[activeStreamId];
     const sid = activeStreamId;
     lockBusy();
     closeStreamBrowser();
-    const ascii = title.replace(/[^\x20-\x7E]/g, '').trim();
-    const searchText = ascii || title;
+    const searchText = title.replace(/[^\x20-\x7E]/g, '').trim() || title;
 
     try {
         await ensureCinema();
@@ -914,23 +964,27 @@ async function playOnStream(title) {
         if (sid === 'youtube') {
             toast(`📺 YouTube — "${searchText}"...`, 'info');
             await adb(`am start -a android.intent.action.VIEW -d "https://www.youtube.com/results?search_query=${encodeURIComponent(searchText)}" com.google.android.youtube.tv`);
-            await sleep(3000);
         } else if (sid === 'spotify') {
             toast(`🎵 Spotify — "${searchText}"...`, 'info');
             await adb(`am start -a android.intent.action.VIEW -d "spotify:search:${encodeURIComponent(searchText)}" com.spotify.tv.android`);
-            await sleep(3000);
         } else if (sid === 'netflix') {
-            await searchOnNetflix(searchText);
-            return;
-        } else if (sid === 'disney' || sid === 'prime' || sid === 'appletv') {
-            await searchOnStreamingApp(svc, searchText);
-            return;
+            toast(`🎬 Netflix — "${searchText}"...`, 'info');
+            await launchAndSearch('com.netflix.ninja', searchText);
+        } else if (sid === 'disney') {
+            toast(`🎬 Disney+ — "${searchText}"...`, 'info');
+            await launchAndSearch('com.disney.disneyplus', searchText);
+        } else if (sid === 'prime') {
+            toast(`🎬 Prime Video — "${searchText}"...`, 'info');
+            await launchAndSearch('com.amazon.amazonvideo.livingroom', searchText);
+        } else if (sid === 'appletv') {
+            toast(`🎬 Apple TV — "${searchText}"...`, 'info');
+            await launchAndSearch('com.apple.atve.androidtv.appletv', searchText);
         } else {
             toast(`🎬 ${svc.name}...`, 'info');
             await adbLaunch(svc.pkg);
-            await sleep(3000);
         }
 
+        await sleep(2000);
         await fetchStates();
         toast(`✅ ${svc.name} — מוכן!`, 'success');
     } catch (e) {
@@ -940,67 +994,13 @@ async function playOnStream(title) {
     unlockBusy();
 }
 
-async function searchOnNetflix(query) {
-    toast(`🎬 Netflix — חיפוש "${query}"...`, 'info');
-    try {
-        await adbLaunch('com.netflix.ninja');
-        await sleep(5000);
+async function launchAndSearch(pkg, query) {
+    await adbLaunch(pkg);
+    await sleep(4000);
 
-        await adb('am start --activity-single-top -a android.intent.action.VIEW -d "https://www.netflix.com/browse" com.netflix.ninja');
-        await sleep(3000);
-
-        const ups = 'input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19';
-        await adb(ups);
-        await sleep(500);
-
-        await adb('input keyevent 23');
-        await sleep(2000);
-
-        if (query) {
-            await adb(`input text "${query.replace(/ /g, '%s')}"`);
-            await sleep(3000);
-            await adb('input keyevent 20');
-            await sleep(500);
-            await adb('input keyevent 23');
-        }
-
-        await fetchStates();
-        toast('✅ Netflix — מוכן!', 'success');
-    } catch (e) {
-        console.error(e);
-        toast('⚠️ Netflix — שגיאה', 'error');
-    }
-    unlockBusy();
-}
-
-async function searchOnStreamingApp(svc, query) {
-    toast(`🎬 ${svc.name} — חיפוש "${query}"...`, 'info');
-    try {
-        await adbLaunch(svc.pkg);
-        await sleep(5000);
-
-        const ups = 'input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19';
-        await adb(ups);
-        await sleep(500);
-
-        await adb('input keyevent 84');
-        await sleep(2000);
-
-        if (query) {
-            await adb(`input text "${query.replace(/ /g, '%s')}"`);
-            await sleep(3000);
-            await adb('input keyevent 20');
-            await sleep(500);
-            await adb('input keyevent 23');
-        }
-
-        await fetchStates();
-        toast(`✅ ${svc.name} — מוכן!`, 'success');
-    } catch (e) {
-        console.error(e);
-        toast(`⚠️ ${svc.name} — שגיאה`, 'error');
-    }
-    unlockBusy();
+    const safe = query.replace(/"/g, '\\"').replace(/ /g, '%s');
+    await adb(`am start -a "com.google.android.gms.actions.SEARCH_ACTION" --es query "${safe}" ${pkg}`);
+    await sleep(3000);
 }
 
 async function searchStream(query) {
@@ -1009,23 +1009,32 @@ async function searchStream(query) {
     if (!query || query.length < 2) { loadStreamTrending(); return; }
 
     content.innerHTML = '<div class="plex-loading">מחפש...</div>';
-
-    const filtered = (trendingCache || []).filter(i =>
-        i.title.toLowerCase().includes(query.toLowerCase())
-    );
-
     try {
-        const tvR = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(query)}`);
-        const tvData = await tvR.json();
-        const tvItems = tvData.slice(0, 12).map(r => ({
-            title: r.show?.name || '',
-            image: (r.show?.image?.medium || '').replace('http:', 'https:'),
-            year: r.show?.premiered?.substring(0, 4) || '',
-            category: r.show?.genres?.[0] || 'TV',
-        })).filter(i => i.title && i.image);
-        renderStreamItems([...filtered, ...tvItems], content);
-    } catch {
-        renderStreamItems(filtered, content);
+        const [movies, shows] = await Promise.all([
+            tmdbGet(`/search/movie?query=${encodeURIComponent(query)}&language=he-IL&page=1`),
+            tmdbGet(`/search/tv?query=${encodeURIComponent(query)}&language=he-IL&page=1`),
+        ]);
+        const movieItems = (movies?.results || []).map(m => ({
+            title: m.title || m.original_title || '',
+            image: tmdbPoster(m.poster_path),
+            year: (m.release_date || '').substring(0, 4),
+            category: 'סרט',
+            tmdbId: m.id,
+            origTitle: m.original_title || m.title || '',
+        }));
+        const tvItems = (shows?.results || []).map(s => ({
+            title: s.name || s.original_name || '',
+            image: tmdbPoster(s.poster_path),
+            year: (s.first_air_date || '').substring(0, 4),
+            category: 'סדרה',
+            tmdbId: s.id,
+            origTitle: s.original_name || s.name || '',
+        }));
+        const combined = interleave(movieItems, tvItems).filter(i => i.image).slice(0, 30);
+        renderStreamItems(combined, content);
+    } catch (e) {
+        console.error('[TMDB search]', e);
+        content.innerHTML = '<div class="plex-loading">שגיאה בחיפוש</div>';
     }
 }
 
