@@ -126,6 +126,23 @@
             <button class="mn" data-go="room"><span class="mn-i">🏠</span><span>חדר</span></button>
         </nav>
 
+        <!-- PLEX BROWSER OVERLAY -->
+        <div id="plexOverlay" class="plex-overlay hidden">
+            <div class="plex-header">
+                <button class="plex-back" id="plexClose">✕</button>
+                <div class="plex-title">Plex</div>
+                <div class="plex-tabs">
+                    <button class="plex-tab active" data-pcat="onDeck">ממשיכים</button>
+                    <button class="plex-tab" data-pcat="movies">סרטים</button>
+                    <button class="plex-tab" data-pcat="shows">סדרות</button>
+                    <button class="plex-tab" data-pcat="kids">ילדים</button>
+                </div>
+            </div>
+            <div class="plex-content" id="plexContent">
+                <div class="plex-loading">טוען...</div>
+            </div>
+        </div>
+
         <div id="toasts"></div>
     </div>
 

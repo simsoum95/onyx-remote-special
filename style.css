@@ -390,6 +390,88 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 /* ============================================================
+   PLEX BROWSER OVERLAY
+   ============================================================ */
+.plex-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+.plex-overlay.hidden { display: none !important; }
+
+.plex-header {
+    padding: 12px 16px; padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    background: rgba(5,5,16,0.95); backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--gb);
+}
+.plex-back {
+    position: absolute; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 12px;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t1); font-size: 1rem; display: flex; align-items: center; justify-content: center;
+}
+.plex-back:active { transform: scale(0.85); }
+.plex-title {
+    text-align: center; font-family: var(--tech);
+    font-size: 0.85rem; font-weight: 700; color: #E5A00D;
+    letter-spacing: 3px; margin-bottom: 10px;
+}
+.plex-tabs {
+    display: flex; gap: 6px; overflow-x: auto;
+    scrollbar-width: none; -ms-overflow-style: none;
+}
+.plex-tabs::-webkit-scrollbar { display: none; }
+.plex-tab {
+    flex-shrink: 0; padding: 8px 16px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 600;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t3); transition: var(--tr); white-space: nowrap;
+}
+.plex-tab.active { color: #E5A00D; border-color: rgba(229,160,13,0.3); background: rgba(229,160,13,0.08); }
+.plex-tab:active { transform: scale(0.92); }
+
+.plex-content {
+    flex: 1; overflow-y: auto; padding: 12px;
+    -webkit-overflow-scrolling: touch;
+}
+.plex-loading { text-align: center; padding: 40px; color: var(--t3); font-size: 0.85rem; }
+
+.plex-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.plex-card {
+    position: relative; border-radius: 10px; overflow: hidden;
+    background: var(--glass); border: 1px solid var(--gb);
+    cursor: pointer; transition: var(--tr);
+    aspect-ratio: 2/3;
+}
+.plex-card:active { transform: scale(0.93); }
+.plex-card img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block;
+}
+.plex-card-info {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 24px 6px 6px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+}
+.plex-card-title {
+    font-size: 0.62rem; font-weight: 700; color: #fff;
+    line-height: 1.2; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.plex-card-year { font-size: 0.5rem; color: rgba(255,255,255,0.5); }
+.plex-card-progress {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: rgba(255,255,255,0.1);
+}
+.plex-card-progress-fill {
+    height: 100%; background: #E5A00D; border-radius: 0 2px 0 0;
+}
+
+/* ============================================================
    SMALL MOBILE (<375px) — iPhone SE
    ============================================================ */
 @media (max-width: 374px) {

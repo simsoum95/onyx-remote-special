@@ -390,6 +390,7 @@ function renderApps() {
     g.querySelectorAll('.app-tile').forEach(t => {
         t.addEventListener('click', () => {
             const a = APPS[parseInt(t.dataset.idx)];
+            if (a.name === 'Plex') { openPlexBrowser(); return; }
             if (a.console) smartConsole(a);
             else smartSource(a);
         });
@@ -580,11 +581,118 @@ function initEvents() {
 }
 
 /* ============================================================
+   PLEX BROWSER
+   ============================================================ */
+const PLEX_MACHINE = '7c84d507caa716dcec1ecede058c0a3c854f264e';
+
+async function plexGet(path) {
+    const r = await fetch(`/api/plex?path=${encodeURIComponent(path)}`);
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+}
+
+function plexThumb(thumbPath) {
+    if (!thumbPath) return '';
+    return `/api/plex?path=${encodeURIComponent(thumbPath)}&img=1`;
+}
+
+function openPlexBrowser() {
+    document.getElementById('plexOverlay')?.classList.remove('hidden');
+    loadPlexCategory('onDeck');
+}
+
+function closePlexBrowser() {
+    document.getElementById('plexOverlay')?.classList.add('hidden');
+}
+
+async function loadPlexCategory(cat) {
+    const content = document.getElementById('plexContent');
+    if (!content) return;
+    content.innerHTML = '<div class="plex-loading">טוען...</div>';
+
+    document.querySelectorAll('.plex-tab').forEach(t => t.classList.toggle('active', t.dataset.pcat === cat));
+
+    try {
+        let data;
+        if (cat === 'onDeck') {
+            data = await plexGet('/library/onDeck');
+        } else if (cat === 'movies') {
+            data = await plexGet('/library/sections/1/recentlyAdded');
+        } else if (cat === 'shows') {
+            data = await plexGet('/library/sections/8/recentlyAdded');
+        } else if (cat === 'kids') {
+            data = await plexGet('/library/sections/2/recentlyAdded');
+        }
+
+        const items = data?.MediaContainer?.Metadata || [];
+        if (items.length === 0) {
+            content.innerHTML = '<div class="plex-loading">אין תוכן</div>';
+            return;
+        }
+
+        content.innerHTML = `<div class="plex-grid">${items.slice(0, 30).map(item => {
+            const title = item.title || item.grandparentTitle || '';
+            const year = item.year || '';
+            const thumb = item.thumb || item.parentThumb || item.grandparentThumb || '';
+            const progress = item.viewOffset && item.duration
+                ? Math.round((item.viewOffset / item.duration) * 100) : 0;
+            const rKey = item.ratingKey;
+            const isEpisode = item.type === 'episode';
+            const displayTitle = isEpisode ? (item.grandparentTitle || title) : title;
+            const sub = isEpisode ? `S${item.parentIndex}E${item.index}` : year;
+
+            return `<div class="plex-card" data-rkey="${rKey}" data-type="${item.type}">
+                <img src="${plexThumb(thumb)}" alt="${displayTitle}" loading="lazy">
+                <div class="plex-card-info">
+                    <div class="plex-card-title">${displayTitle}</div>
+                    <div class="plex-card-year">${sub}</div>
+                </div>
+                ${progress > 0 ? `<div class="plex-card-progress"><div class="plex-card-progress-fill" style="width:${progress}%"></div></div>` : ''}
+            </div>`;
+        }).join('')}</div>`;
+
+        content.querySelectorAll('.plex-card').forEach(c => {
+            c.addEventListener('click', () => playPlexItem(c.dataset.rkey));
+        });
+    } catch (e) {
+        console.error('[Plex]', e);
+        content.innerHTML = '<div class="plex-loading">שגיאה בטעינה</div>';
+    }
+}
+
+async function playPlexItem(ratingKey) {
+    if (S.busy) return;
+    lockBusy();
+    closePlexBrowser();
+    toast('🎞️ Plex — מפעיל...', 'info');
+    try {
+        await ensureCinema();
+        const deepLink = `plex://play/?metadataKey=%2Flibrary%2Fmetadata%2F${ratingKey}&metadataType=1&serverID=${PLEX_MACHINE}`;
+        await adb(`am start -a android.intent.action.VIEW -d "${deepLink}"`);
+        await sleep(4000);
+        await fetchStates();
+        toast('✅ Plex — lecture!', 'success');
+    } catch (e) {
+        console.error(e);
+        toast('⚠️ שגיאה', 'error');
+    }
+    unlockBusy();
+}
+
+function initPlexEvents() {
+    document.getElementById('plexClose')?.addEventListener('click', closePlexBrowser);
+    document.querySelectorAll('.plex-tab').forEach(t => {
+        t.addEventListener('click', () => loadPlexCategory(t.dataset.pcat));
+    });
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 async function init() {
     showView('loader');
     initEvents();
+    initPlexEvents();
     switchTab('apps');
     const ok = await fetchStates();
     showView('app');
