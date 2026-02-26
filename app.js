@@ -655,10 +655,53 @@ function renderPlexItems(items, container) {
             if (c.dataset.type === 'show') {
                 loadShowSeasons(c.dataset.rkey);
             } else {
-                playPlexItem(c.dataset.rkey, 4);
+                showPlexDetail(c.dataset.rkey);
             }
         });
     });
+}
+
+async function showPlexDetail(ratingKey) {
+    const overlay = document.getElementById('movieDetail');
+    if (!overlay) { playPlexItem(ratingKey, 4); return; }
+
+    overlay.classList.remove('hidden');
+    document.getElementById('mdTitle').textContent = '...';
+    document.getElementById('mdOrig').textContent = '';
+    document.getElementById('mdMeta').innerHTML = '';
+    document.getElementById('mdGenres').innerHTML = '';
+    document.getElementById('mdOverview').textContent = 'טוען...';
+    document.getElementById('mdPoster').src = '';
+    document.getElementById('mdBackdrop').style.backgroundImage = '';
+
+    mdPendingPlay = { plex: true, ratingKey };
+
+    try {
+        const data = await plexGet(`/library/metadata/${ratingKey}`);
+        const item = data?.MediaContainer?.Metadata?.[0];
+        if (!item) return;
+
+        const title = item.title || '';
+        const year = item.year || '';
+        const rating = item.audienceRating || item.rating || '';
+        const runtime = item.duration ? `${Math.round(item.duration / 60000)} דק׳` : '';
+        const genres = (item.Genre || []).map(g => g.tag);
+        const overview = item.summary || '';
+        const poster = item.thumb ? plexThumb(item.thumb) : '';
+        const backdrop = item.art ? plexThumb(item.art) : '';
+
+        document.getElementById('mdTitle').textContent = title;
+        document.getElementById('mdOrig').textContent = item.originalTitle || '';
+        if (poster) document.getElementById('mdPoster').src = poster;
+        if (backdrop) document.getElementById('mdBackdrop').style.backgroundImage = `url(${backdrop})`;
+
+        const metaParts = [year, rating ? `⭐ ${rating}` : '', runtime].filter(Boolean);
+        document.getElementById('mdMeta').innerHTML = metaParts.map(p => `<span>${p}</span>`).join('');
+        document.getElementById('mdGenres').innerHTML = genres.map(g => `<span>${g}</span>`).join('');
+        document.getElementById('mdOverview').textContent = overview || 'אין תקציר זמין';
+    } catch (e) {
+        console.error('[Plex detail]', e);
+    }
 }
 
 async function loadPlexCategory(cat) {
@@ -1040,7 +1083,77 @@ function appendStreamItems(items) {
     grid.insertAdjacentHTML('beforeend', html);
     grid.querySelectorAll('.stream-card:not([data-bound])').forEach(c => {
         c.dataset.bound = '1';
-        c.addEventListener('click', () => playOnStream(c.dataset.title, c.dataset.tmdb, c.dataset.show === '1'));
+        c.addEventListener('click', () => showMovieDetail(c.dataset.title, c.dataset.tmdb, c.dataset.show === '1'));
+    });
+}
+
+let mdPendingPlay = null;
+
+async function showMovieDetail(title, tmdbId, isShow) {
+    const overlay = document.getElementById('movieDetail');
+    if (!overlay || !tmdbId) { playOnStream(title, tmdbId, isShow); return; }
+
+    overlay.classList.remove('hidden');
+    document.getElementById('mdTitle').textContent = '...';
+    document.getElementById('mdOrig').textContent = title;
+    document.getElementById('mdMeta').innerHTML = '';
+    document.getElementById('mdGenres').innerHTML = '';
+    document.getElementById('mdOverview').textContent = 'טוען...';
+    document.getElementById('mdPoster').src = '';
+    document.getElementById('mdBackdrop').style.backgroundImage = '';
+
+    mdPendingPlay = { title, tmdbId, isShow };
+
+    try {
+        const type = isShow ? 'tv' : 'movie';
+        const data = await tmdbGet(`/${type}/${tmdbId}?language=he-IL`);
+        if (!data || data.success === false) return;
+
+        const heTitle = data.title || data.name || title;
+        const origTitle = data.original_title || data.original_name || title;
+        const year = (data.release_date || data.first_air_date || '').substring(0, 4);
+        const rating = data.vote_average ? data.vote_average.toFixed(1) : '';
+        const runtime = data.runtime ? `${data.runtime} דק׳` : '';
+        const seasons = data.number_of_seasons ? `${data.number_of_seasons} עונות` : '';
+        const genres = (data.genres || []).map(g => g.name);
+        const overview = data.overview || '';
+        const poster = data.poster_path ? tmdbPoster(data.poster_path, 500) : '';
+        const backdrop = data.backdrop_path ? `https://image.tmdb.org/t/p/w780${data.backdrop_path}` : '';
+
+        document.getElementById('mdTitle').textContent = heTitle;
+        document.getElementById('mdOrig').textContent = origTitle !== heTitle ? origTitle : '';
+        if (poster) document.getElementById('mdPoster').src = poster;
+        if (backdrop) document.getElementById('mdBackdrop').style.backgroundImage = `url(${backdrop})`;
+
+        const metaParts = [year, rating ? `⭐ ${rating}` : '', isShow ? seasons : runtime].filter(Boolean);
+        document.getElementById('mdMeta').innerHTML = metaParts.map(p => `<span>${p}</span>`).join('');
+        document.getElementById('mdGenres').innerHTML = genres.map(g => `<span>${g}</span>`).join('');
+        document.getElementById('mdOverview').textContent = overview || 'אין תקציר זמין';
+
+        mdPendingPlay = { title: origTitle, tmdbId, isShow };
+    } catch (e) {
+        console.error('[TMDB detail]', e);
+    }
+}
+
+function closeMovieDetail() {
+    document.getElementById('movieDetail')?.classList.add('hidden');
+    mdPendingPlay = null;
+}
+
+function initMovieDetail() {
+    document.getElementById('mdClose')?.addEventListener('click', closeMovieDetail);
+    document.getElementById('mdPlay')?.addEventListener('click', () => {
+        if (!mdPendingPlay) return;
+        if (mdPendingPlay.plex) {
+            const rk = mdPendingPlay.ratingKey;
+            closeMovieDetail();
+            playPlexItem(rk, 4);
+        } else {
+            const { title, tmdbId, isShow } = mdPendingPlay;
+            closeMovieDetail();
+            playOnStream(title, tmdbId, isShow);
+        }
     });
 }
 
@@ -1092,7 +1205,7 @@ function renderStreamItems(items, container) {
     }).join('')}</div>`;
 
     container.querySelectorAll('.stream-card').forEach(c => {
-        c.addEventListener('click', () => playOnStream(c.dataset.title, c.dataset.tmdb, c.dataset.show === '1'));
+        c.addEventListener('click', () => showMovieDetail(c.dataset.title, c.dataset.tmdb, c.dataset.show === '1'));
     });
 }
 
@@ -1298,6 +1411,7 @@ async function init() {
     initEvents();
     initPlexEvents();
     initStreamEvents();
+    initMovieDetail();
     switchTab('apps');
     const ok = await fetchStates();
     showView('app');
