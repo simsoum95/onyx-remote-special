@@ -902,34 +902,103 @@ function renderStreamItems(items, container) {
 async function playOnStream(title) {
     if (!activeStreamId || S.busy) return;
     const svc = STREAM_SERVICES[activeStreamId];
+    const sid = activeStreamId;
     lockBusy();
     closeStreamBrowser();
-    toast(`🎬 ${svc.name} — "${title}"...`, 'info');
+    const ascii = title.replace(/[^\x20-\x7E]/g, '').trim();
+    const searchText = ascii || title;
 
     try {
         await ensureCinema();
-        const ascii = title.replace(/[^\x20-\x7E]/g, '').trim();
 
-        if (activeStreamId === 'youtube') {
-            await adb(`am start -a android.intent.action.VIEW -d "https://www.youtube.com/results?search_query=${encodeURIComponent(ascii || title)}" com.google.android.youtube.tv`);
-        } else if (activeStreamId === 'spotify') {
-            await adb(`am start -a android.intent.action.VIEW -d "spotify:search:${encodeURIComponent(ascii || title)}" com.spotify.tv.android`);
-        } else if (ascii) {
-            await adbLaunch(svc.pkg);
-            await sleep(4000);
-            await adb('input keyevent 84');
-            await sleep(1500);
-            await adb(`input text "${ascii.replace(/ /g, '%s')}"`);
+        if (sid === 'youtube') {
+            toast(`📺 YouTube — "${searchText}"...`, 'info');
+            await adb(`am start -a android.intent.action.VIEW -d "https://www.youtube.com/results?search_query=${encodeURIComponent(searchText)}" com.google.android.youtube.tv`);
+            await sleep(3000);
+        } else if (sid === 'spotify') {
+            toast(`🎵 Spotify — "${searchText}"...`, 'info');
+            await adb(`am start -a android.intent.action.VIEW -d "spotify:search:${encodeURIComponent(searchText)}" com.spotify.tv.android`);
+            await sleep(3000);
+        } else if (sid === 'netflix') {
+            await searchOnNetflix(searchText);
+            return;
+        } else if (sid === 'disney' || sid === 'prime' || sid === 'appletv') {
+            await searchOnStreamingApp(svc, searchText);
+            return;
         } else {
+            toast(`🎬 ${svc.name}...`, 'info');
             await adbLaunch(svc.pkg);
+            await sleep(3000);
         }
 
-        await sleep(2000);
         await fetchStates();
         toast(`✅ ${svc.name} — מוכן!`, 'success');
     } catch (e) {
         console.error(e);
         toast('⚠️ שגיאה', 'error');
+    }
+    unlockBusy();
+}
+
+async function searchOnNetflix(query) {
+    toast(`🎬 Netflix — חיפוש "${query}"...`, 'info');
+    try {
+        await adbLaunch('com.netflix.ninja');
+        await sleep(5000);
+
+        await adb('am start --activity-single-top -a android.intent.action.VIEW -d "https://www.netflix.com/browse" com.netflix.ninja');
+        await sleep(3000);
+
+        const ups = 'input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19';
+        await adb(ups);
+        await sleep(500);
+
+        await adb('input keyevent 23');
+        await sleep(2000);
+
+        if (query) {
+            await adb(`input text "${query.replace(/ /g, '%s')}"`);
+            await sleep(3000);
+            await adb('input keyevent 20');
+            await sleep(500);
+            await adb('input keyevent 23');
+        }
+
+        await fetchStates();
+        toast('✅ Netflix — מוכן!', 'success');
+    } catch (e) {
+        console.error(e);
+        toast('⚠️ Netflix — שגיאה', 'error');
+    }
+    unlockBusy();
+}
+
+async function searchOnStreamingApp(svc, query) {
+    toast(`🎬 ${svc.name} — חיפוש "${query}"...`, 'info');
+    try {
+        await adbLaunch(svc.pkg);
+        await sleep(5000);
+
+        const ups = 'input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19; sleep 0.2; input keyevent 19';
+        await adb(ups);
+        await sleep(500);
+
+        await adb('input keyevent 84');
+        await sleep(2000);
+
+        if (query) {
+            await adb(`input text "${query.replace(/ /g, '%s')}"`);
+            await sleep(3000);
+            await adb('input keyevent 20');
+            await sleep(500);
+            await adb('input keyevent 23');
+        }
+
+        await fetchStates();
+        toast(`✅ ${svc.name} — מוכן!`, 'success');
+    } catch (e) {
+        console.error(e);
+        toast(`⚠️ ${svc.name} — שגיאה`, 'error');
     }
     unlockBusy();
 }
