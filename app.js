@@ -591,9 +591,10 @@ async function plexGet(path) {
     return r.json();
 }
 
-function plexThumb(thumbPath) {
+function plexThumb(thumbPath, w = 200, h = 300) {
     if (!thumbPath) return '';
-    return `/api/plex?path=${encodeURIComponent(thumbPath)}&img=1`;
+    const transcoded = `/photo/:/transcode?width=${w}&height=${h}&minSize=1&upscale=1&url=${encodeURIComponent(thumbPath)}`;
+    return `/api/plex?path=${encodeURIComponent(transcoded)}&img=1`;
 }
 
 function openPlexBrowser() {

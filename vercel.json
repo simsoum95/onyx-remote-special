@@ -1,9 +1,11 @@
 {
     "functions": {
-        "api/ha.js": { "maxDuration": 15 }
+        "api/ha.js": { "maxDuration": 15 },
+        "api/plex.js": { "maxDuration": 25 }
     },
     "rewrites": [
         { "source": "/api/ha", "destination": "/api/ha" },
+        { "source": "/api/plex", "destination": "/api/plex" },
         { "source": "/((?!api).*)", "destination": "/index.html" }
     ],
     "headers": [
