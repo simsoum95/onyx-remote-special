@@ -381,19 +381,28 @@ function renderAudio() {
 function renderApps() {
     const g = document.getElementById('appsGrid'); if (!g) return;
     const cur = getShieldApp();
-    g.innerHTML = APPS.map((a, i) => {
-        const isActive = !a.console && cur === a.pkg;
-        return `<button class="app-tile ${isActive ? 'active' : ''}" data-idx="${i}" title="${a.name}">
-            <img class="app-logo" src="${a.logo}" alt="${a.name}">
-        </button>`;
-    }).join('');
-    g.querySelectorAll('.app-tile').forEach(t => {
-        t.addEventListener('click', () => {
-            const a = APPS[parseInt(t.dataset.idx)];
-            if (a.name === 'Plex') { openPlexBrowser(); return; }
-            if (a.console) smartConsole(a);
-            else smartSource(a);
+
+    if (!g.dataset.built) {
+        g.dataset.built = '1';
+        g.innerHTML = APPS.map((a, i) => {
+            return `<button class="app-tile" data-idx="${i}" title="${a.name}">
+                <img class="app-logo" src="${a.logo}" alt="${a.name}">
+            </button>`;
+        }).join('');
+        g.querySelectorAll('.app-tile').forEach(t => {
+            t.addEventListener('click', () => {
+                const a = APPS[parseInt(t.dataset.idx)];
+                if (a.name === 'Plex') { openPlexBrowser(); return; }
+                if (a.console) smartConsole(a);
+                else smartSource(a);
+            });
         });
+    }
+
+    g.querySelectorAll('.app-tile').forEach(t => {
+        const a = APPS[parseInt(t.dataset.idx)];
+        const isActive = !a.console && cur === a.pkg;
+        t.classList.toggle('active', isActive);
     });
 }
 
@@ -644,7 +653,7 @@ function renderPlexItems(items, container) {
             if (c.dataset.type === 'show') {
                 loadShowSeasons(c.dataset.rkey);
             } else {
-                playPlexItem(c.dataset.rkey, c.dataset.type === 'episode' ? 4 : 1);
+                playPlexItem(c.dataset.rkey, 4);
             }
         });
     });
@@ -772,16 +781,18 @@ async function plexSearch(query) {
     }
 }
 
-async function playPlexItem(ratingKey, metadataType = 1) {
+async function playPlexItem(ratingKey, metadataType = 4) {
     if (S.busy) return;
     lockBusy();
     closePlexBrowser();
     toast('🎞️ Plex — מפעיל...', 'info');
     try {
         await ensureCinema();
-        const deepLink = `plex://play/?metadataKey=%2Flibrary%2Fmetadata%2F${ratingKey}&metadataType=${metadataType}&serverID=${PLEX_MACHINE}`;
-        await adb(`am start -a android.intent.action.VIEW -d "${deepLink}"`);
-        await sleep(4000);
+        await adbLaunch('com.plexapp.android');
+        await sleep(5000);
+        const playCmd = `(echo -e "GET /player/playback/playMedia?key=/library/metadata/${ratingKey}\\x26type=${metadataType}\\x26offset=0\\x26machineIdentifier=${PLEX_MACHINE}\\x26address=192.168.1.23\\x26port=32400\\x26protocol=http\\x26token=${PLEX_TK}\\x26commandID=$((RANDOM)) HTTP/1.0\\r\\nHost: 127.0.0.1\\r\\nX-Plex-Client-Identifier: onyx-remote\\r\\n\\r\\n"; sleep 3) | nc 127.0.0.1 32500 2>&1`;
+        await adb(playCmd);
+        await sleep(3000);
         await fetchStates();
         toast('✅ Plex — lecture!', 'success');
     } catch (e) {
