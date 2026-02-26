@@ -874,56 +874,106 @@ function tmdbPoster(path, w = 342) {
     return `https://image.tmdb.org/t/p/w${w}${path}`;
 }
 
-async function loadStreamTrending() {
+const GENRE_MAP = {
+    kids:    { movie: '16,10751', tv: '10762,16' },
+    action:  { movie: '28', tv: '10759' },
+    comedy:  { movie: '35', tv: '35' },
+    drama:   { movie: '18', tv: '18' },
+    horror:  { movie: '27', tv: '9648' },
+};
+
+let activeStreamCat = 'popular';
+
+async function loadStreamTrending(cat) {
+    if (cat) activeStreamCat = cat;
+    else cat = activeStreamCat;
+
     const content = document.getElementById('streamContent');
     if (!content) return;
     const svc = STREAM_SERVICES[activeStreamId];
     if (!svc) return;
 
-    const cacheKey = activeStreamId;
+    const cacheKey = `${activeStreamId}_${cat}`;
     if (tmdbCache[cacheKey]) { renderStreamItems(tmdbCache[cacheKey], content); return; }
 
     content.innerHTML = '<div class="plex-loading">טוען...</div>';
     try {
         let items = [];
         if (svc.tmdbProvider) {
-            const [movies, shows] = await Promise.all([
-                tmdbGet(`/discover/movie?with_watch_providers=${svc.tmdbProvider}&watch_region=IL&sort_by=popularity.desc&language=he-IL&page=1`),
-                tmdbGet(`/discover/tv?with_watch_providers=${svc.tmdbProvider}&watch_region=IL&sort_by=popularity.desc&language=he-IL&page=1`),
-            ]);
-            const movieItems = (movies?.results || []).map(m => ({
-                title: m.title || m.original_title || '',
-                origTitle: m.original_title || m.title || '',
-                image: tmdbPoster(m.poster_path),
-                year: (m.release_date || '').substring(0, 4),
-                category: 'סרט',
-                tmdbId: m.id,
-            }));
-            const tvItems = (shows?.results || []).map(s => ({
-                title: s.name || s.original_name || '',
-                origTitle: s.original_name || s.name || '',
-                image: tmdbPoster(s.poster_path),
-                year: (s.first_air_date || '').substring(0, 4),
-                category: 'סדרה',
-                tmdbId: s.id,
-            }));
-            items = interleave(movieItems, tvItems).slice(0, 40);
+            const base = `with_watch_providers=${svc.tmdbProvider}&watch_region=IL&sort_by=popularity.desc&language=he-IL`;
+            const genre = GENRE_MAP[cat];
+
+            if (cat === 'movies') {
+                const [p1, p2, p3] = await Promise.all([
+                    tmdbGet(`/discover/movie?${base}&page=1`),
+                    tmdbGet(`/discover/movie?${base}&page=2`),
+                    tmdbGet(`/discover/movie?${base}&page=3`),
+                ]);
+                items = [...(p1?.results||[]), ...(p2?.results||[]), ...(p3?.results||[])].map(mapMovie);
+            } else if (cat === 'tv') {
+                const [p1, p2, p3] = await Promise.all([
+                    tmdbGet(`/discover/tv?${base}&page=1`),
+                    tmdbGet(`/discover/tv?${base}&page=2`),
+                    tmdbGet(`/discover/tv?${base}&page=3`),
+                ]);
+                items = [...(p1?.results||[]), ...(p2?.results||[]), ...(p3?.results||[])].map(mapShow);
+            } else if (genre) {
+                const [movies, shows] = await Promise.all([
+                    tmdbGet(`/discover/movie?${base}&with_genres=${genre.movie}&page=1`),
+                    tmdbGet(`/discover/tv?${base}&with_genres=${genre.tv}&page=1`),
+                ]);
+                items = interleave((movies?.results||[]).map(mapMovie), (shows?.results||[]).map(mapShow));
+            } else {
+                const [m1, m2, t1, t2] = await Promise.all([
+                    tmdbGet(`/discover/movie?${base}&page=1`),
+                    tmdbGet(`/discover/movie?${base}&page=2`),
+                    tmdbGet(`/discover/tv?${base}&page=1`),
+                    tmdbGet(`/discover/tv?${base}&page=2`),
+                ]);
+                const movies = [...(m1?.results||[]), ...(m2?.results||[])].map(mapMovie);
+                const shows = [...(t1?.results||[]), ...(t2?.results||[])].map(mapShow);
+                items = interleave(movies, shows);
+            }
         } else {
             const data = await tmdbGet('/trending/all/week?language=he-IL');
             items = (data?.results || []).map(r => ({
                 title: r.title || r.name || '',
+                origTitle: r.original_title || r.original_name || '',
                 image: tmdbPoster(r.poster_path),
                 year: (r.release_date || r.first_air_date || '').substring(0, 4),
                 category: r.media_type === 'tv' ? 'סדרה' : 'סרט',
                 tmdbId: r.id,
             }));
         }
+        items = items.filter(i => i.image);
         tmdbCache[cacheKey] = items;
         renderStreamItems(items, content);
     } catch (e) {
         console.error('[TMDB]', e);
         content.innerHTML = '<div class="plex-loading">שגיאה בטעינה</div>';
     }
+}
+
+function mapMovie(m) {
+    return {
+        title: m.title || m.original_title || '',
+        origTitle: m.original_title || m.title || '',
+        image: tmdbPoster(m.poster_path),
+        year: (m.release_date || '').substring(0, 4),
+        category: 'סרט',
+        tmdbId: m.id,
+    };
+}
+
+function mapShow(s) {
+    return {
+        title: s.name || s.original_name || '',
+        origTitle: s.original_name || s.name || '',
+        image: tmdbPoster(s.poster_path),
+        year: (s.first_air_date || '').substring(0, 4),
+        category: 'סדרה',
+        tmdbId: s.id,
+    };
 }
 
 function interleave(a, b) {
@@ -1080,6 +1130,14 @@ async function searchStream(query) {
 
 function initStreamEvents() {
     document.getElementById('streamClose')?.addEventListener('click', closeStreamBrowser);
+
+    document.querySelectorAll('.stream-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.stream-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            loadStreamTrending(tab.dataset.cat);
+        });
+    });
 
     document.getElementById('streamOpenApp')?.addEventListener('click', async () => {
         if (!activeStreamId || S.busy) return;

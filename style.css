@@ -541,6 +541,23 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     border-color: rgba(0,212,255,0.2);
     color: var(--neon);
 }
+.stream-tabs {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding: 4px 0; scrollbar-width: none;
+}
+.stream-tabs::-webkit-scrollbar { display: none; }
+.stream-tab {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 600;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t2); cursor: pointer; transition: var(--tr);
+    white-space: nowrap;
+}
+.stream-tab.active {
+    background: rgba(0,212,255,0.15);
+    border-color: var(--neon); color: var(--neon);
+}
+.stream-tab:active { transform: scale(0.95); }
 
 /* ============================================================
    SMALL MOBILE (<375px) — iPhone SE
