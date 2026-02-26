@@ -150,6 +150,24 @@
             </div>
         </div>
 
+        <!-- STREAM BROWSER OVERLAY (Netflix, Disney+, Prime, YouTube, Spotify, Apple TV) -->
+        <div id="streamOverlay" class="stream-overlay hidden">
+            <div class="stream-header">
+                <button class="plex-back" id="streamClose">✕</button>
+                <div class="stream-title" id="streamTitle">SERVICE</div>
+                <div class="stream-actions">
+                    <button class="stream-action" id="streamOpenApp">📺 פתח אפליקציה</button>
+                    <button class="stream-action stream-action-search" id="streamSearchTV">🔍 חפש בטלוויזיה</button>
+                </div>
+                <div class="plex-search-wrap">
+                    <input type="search" class="plex-search" id="streamSearch" placeholder="🔍 חיפוש סרט או סדרה..." autocomplete="off">
+                </div>
+            </div>
+            <div class="plex-content" id="streamContent">
+                <div class="plex-loading">טוען...</div>
+            </div>
+        </div>
+
         <div id="toasts"></div>
     </div>
 

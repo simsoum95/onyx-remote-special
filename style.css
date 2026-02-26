@@ -507,6 +507,42 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 /* ============================================================
+   STREAM BROWSER OVERLAY (Netflix, Disney+, Prime, etc.)
+   ============================================================ */
+.stream-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    animation: slideUp 0.3s ease-out;
+}
+.stream-overlay.hidden { display: none !important; }
+.stream-header {
+    padding: 12px 16px; padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    background: rgba(5,5,16,0.95); backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--gb);
+}
+.stream-title {
+    text-align: center; font-family: var(--tech);
+    font-size: 0.9rem; font-weight: 800;
+    letter-spacing: 4px; margin-bottom: 10px;
+}
+.stream-actions {
+    display: flex; gap: 8px; margin-bottom: 10px;
+}
+.stream-action {
+    flex: 1; padding: 11px; border-radius: 12px;
+    font-size: 0.72rem; font-weight: 700; text-align: center;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t2); cursor: pointer; transition: var(--tr);
+}
+.stream-action:active { transform: scale(0.95); }
+.stream-action-search {
+    background: rgba(0,212,255,0.06);
+    border-color: rgba(0,212,255,0.2);
+    color: var(--neon);
+}
+
+/* ============================================================
    SMALL MOBILE (<375px) — iPhone SE
    ============================================================ */
 @media (max-width: 374px) {

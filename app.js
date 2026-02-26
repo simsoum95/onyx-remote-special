@@ -393,6 +393,8 @@ function renderApps() {
             t.addEventListener('click', () => {
                 const a = APPS[parseInt(t.dataset.idx)];
                 if (a.name === 'Plex') { openPlexBrowser(); return; }
+                const svcId = Object.keys(STREAM_SERVICES).find(k => STREAM_SERVICES[k].pkg === a.pkg);
+                if (svcId) { openStreamBrowser(svcId); return; }
                 if (a.console) smartConsole(a);
                 else smartSource(a);
             });
@@ -820,12 +822,185 @@ function initPlexEvents() {
 }
 
 /* ============================================================
+   STREAMING BROWSER — Netflix, Disney+, Prime, YouTube, Spotify, Apple TV
+   Sources: iTunes RSS (trending) + TVmaze (séries) — aucune clé API nécessaire
+   ============================================================ */
+const STREAM_SERVICES = {
+    netflix:  { name: 'Netflix',     pkg: 'com.netflix.ninja',                    color: '#E50914' },
+    disney:   { name: 'Disney+',     pkg: 'com.disney.disneyplus',                color: '#0063E5' },
+    prime:    { name: 'Prime Video', pkg: 'com.amazon.amazonvideo.livingroom',    color: '#00A8E1' },
+    appletv:  { name: 'Apple TV',    pkg: 'com.apple.atve.androidtv.appletv',     color: '#a1a1a1' },
+    youtube:  { name: 'YouTube',     pkg: 'com.google.android.youtube.tv',        color: '#FF0000' },
+    spotify:  { name: 'Spotify',     pkg: 'com.spotify.tv.android',               color: '#1DB954' },
+};
+
+let activeStreamId = null;
+let streamSearchTimer = null;
+let trendingCache = null;
+
+function openStreamBrowser(id) {
+    activeStreamId = id;
+    const svc = STREAM_SERVICES[id];
+    if (!svc) return;
+
+    const overlay = document.getElementById('streamOverlay');
+    overlay.classList.remove('hidden');
+    document.getElementById('streamTitle').textContent = svc.name;
+    document.getElementById('streamTitle').style.color = svc.color;
+    document.getElementById('streamSearch').value = '';
+    overlay.style.setProperty('--svc-color', svc.color);
+
+    loadStreamTrending();
+}
+
+function closeStreamBrowser() {
+    document.getElementById('streamOverlay')?.classList.add('hidden');
+    activeStreamId = null;
+}
+
+async function loadStreamTrending() {
+    const content = document.getElementById('streamContent');
+    if (!content) return;
+
+    if (trendingCache) { renderStreamItems(trendingCache, content); return; }
+
+    content.innerHTML = '<div class="plex-loading">טוען...</div>';
+    try {
+        const r = await fetch('https://itunes.apple.com/il/rss/topmovies/limit=50/json');
+        const data = await r.json();
+        trendingCache = (data?.feed?.entry || []).map(e => ({
+            title: e['im:name']?.label || '',
+            image: (e['im:image']?.[2]?.label || '').replace(/\d+x\d+bb/, '400x600bb'),
+            year: e['im:releaseDate']?.attributes?.label?.match(/\d{4}/)?.[0] || '',
+            category: e.category?.attributes?.label || '',
+        }));
+        renderStreamItems(trendingCache, content);
+    } catch (e) {
+        console.error('[Stream]', e);
+        content.innerHTML = '<div class="plex-loading">שגיאה בטעינה</div>';
+    }
+}
+
+function renderStreamItems(items, container) {
+    if (!items.length) { container.innerHTML = '<div class="plex-loading">אין תוכן</div>'; return; }
+
+    container.innerHTML = `<div class="plex-grid">${items.map((item, i) =>
+        `<div class="plex-card stream-card" data-title="${item.title.replace(/"/g, '&quot;')}">
+            ${item.image ? `<img src="${item.image}" alt="${item.title}" loading="lazy" onerror="this.style.display='none'">` : ''}
+            <div class="plex-card-info">
+                <div class="plex-card-title">${item.title}</div>
+                <div class="plex-card-year">${item.year || item.category}</div>
+            </div>
+        </div>`
+    ).join('')}</div>`;
+
+    container.querySelectorAll('.stream-card').forEach(c => {
+        c.addEventListener('click', () => playOnStream(c.dataset.title));
+    });
+}
+
+async function playOnStream(title) {
+    if (!activeStreamId || S.busy) return;
+    const svc = STREAM_SERVICES[activeStreamId];
+    lockBusy();
+    closeStreamBrowser();
+    toast(`🎬 ${svc.name} — "${title}"...`, 'info');
+
+    try {
+        await ensureCinema();
+        const ascii = title.replace(/[^\x20-\x7E]/g, '').trim();
+
+        if (activeStreamId === 'youtube') {
+            await adb(`am start -a android.intent.action.VIEW -d "https://www.youtube.com/results?search_query=${encodeURIComponent(ascii || title)}" com.google.android.youtube.tv`);
+        } else if (activeStreamId === 'spotify') {
+            await adb(`am start -a android.intent.action.VIEW -d "spotify:search:${encodeURIComponent(ascii || title)}" com.spotify.tv.android`);
+        } else if (ascii) {
+            await adbLaunch(svc.pkg);
+            await sleep(4000);
+            await adb('input keyevent 84');
+            await sleep(1500);
+            await adb(`input text "${ascii.replace(/ /g, '%s')}"`);
+        } else {
+            await adbLaunch(svc.pkg);
+        }
+
+        await sleep(2000);
+        await fetchStates();
+        toast(`✅ ${svc.name} — מוכן!`, 'success');
+    } catch (e) {
+        console.error(e);
+        toast('⚠️ שגיאה', 'error');
+    }
+    unlockBusy();
+}
+
+async function searchStream(query) {
+    const content = document.getElementById('streamContent');
+    if (!content) return;
+    if (!query || query.length < 2) { loadStreamTrending(); return; }
+
+    content.innerHTML = '<div class="plex-loading">מחפש...</div>';
+
+    const filtered = (trendingCache || []).filter(i =>
+        i.title.toLowerCase().includes(query.toLowerCase())
+    );
+
+    try {
+        const tvR = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(query)}`);
+        const tvData = await tvR.json();
+        const tvItems = tvData.slice(0, 12).map(r => ({
+            title: r.show?.name || '',
+            image: (r.show?.image?.medium || '').replace('http:', 'https:'),
+            year: r.show?.premiered?.substring(0, 4) || '',
+            category: r.show?.genres?.[0] || 'TV',
+        })).filter(i => i.title && i.image);
+        renderStreamItems([...filtered, ...tvItems], content);
+    } catch {
+        renderStreamItems(filtered, content);
+    }
+}
+
+function initStreamEvents() {
+    document.getElementById('streamClose')?.addEventListener('click', closeStreamBrowser);
+
+    document.getElementById('streamOpenApp')?.addEventListener('click', async () => {
+        if (!activeStreamId || S.busy) return;
+        const svc = STREAM_SERVICES[activeStreamId];
+        lockBusy();
+        closeStreamBrowser();
+        toast(`🎬 ${svc.name}...`, 'info');
+        try {
+            await ensureCinema();
+            await adbLaunch(svc.pkg);
+            await sleep(3000);
+            toast(`✅ ${svc.name} — מוכן!`, 'success');
+        } catch { toast('⚠️ שגיאה', 'error'); }
+        unlockBusy();
+    });
+
+    document.getElementById('streamSearchTV')?.addEventListener('click', () => {
+        const query = document.getElementById('streamSearch')?.value?.trim();
+        if (!query) { toast('🔍 כתוב שם סרט', 'info'); return; }
+        playOnStream(query);
+    });
+
+    const si = document.getElementById('streamSearch');
+    if (si) {
+        si.addEventListener('input', () => {
+            clearTimeout(streamSearchTimer);
+            streamSearchTimer = setTimeout(() => searchStream(si.value.trim()), 400);
+        });
+    }
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 async function init() {
     showView('loader');
     initEvents();
     initPlexEvents();
+    initStreamEvents();
     switchTab('apps');
     const ok = await fetchStates();
     showView('app');
