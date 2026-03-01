@@ -660,6 +660,24 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     text-align: center;
 }
 .md-play:active { transform: scale(0.96); opacity: 0.9; }
+.md-streams { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.md-streams.hidden { display: none; }
+.md-stream-row { display: flex; align-items: center; gap: 10px; }
+.md-stream-label {
+    font-size: 0.72rem; color: var(--t2);
+    white-space: nowrap; min-width: 70px;
+}
+.md-stream-select {
+    flex: 1; padding: 8px 10px; border-radius: 10px;
+    background: var(--glass); border: 1px solid var(--gb);
+    color: var(--t1); font-size: 0.75rem;
+    font-family: var(--tech);
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2388a'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 10px center;
+}
+.md-stream-select option { background: #1a1a2e; color: #fff; }
 
 /* ============================================================
    SMALL MOBILE (<375px) — iPhone SE

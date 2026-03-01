@@ -673,6 +673,9 @@ async function showPlexDetail(ratingKey) {
     document.getElementById('mdOverview').textContent = 'טוען...';
     document.getElementById('mdPoster').src = '';
     document.getElementById('mdBackdrop').style.backgroundImage = '';
+    document.getElementById('mdStreams')?.classList.add('hidden');
+    document.getElementById('mdAudio').innerHTML = '';
+    document.getElementById('mdSubs').innerHTML = '';
 
     mdPendingPlay = { plex: true, ratingKey };
 
@@ -699,6 +702,32 @@ async function showPlexDetail(ratingKey) {
         document.getElementById('mdMeta').innerHTML = metaParts.map(p => `<span>${p}</span>`).join('');
         document.getElementById('mdGenres').innerHTML = genres.map(g => `<span>${g}</span>`).join('');
         document.getElementById('mdOverview').textContent = overview || 'אין תקציר זמין';
+
+        const streams = item.Media?.[0]?.Part?.[0]?.Stream || [];
+        const audioStreams = streams.filter(s => s.streamType === 2);
+        const subStreams = streams.filter(s => s.streamType === 3);
+
+        if (audioStreams.length > 0 || subStreams.length > 0) {
+            const audioSel = document.getElementById('mdAudio');
+            const subsSel = document.getElementById('mdSubs');
+
+            audioSel.innerHTML = audioStreams.map(a => {
+                const label = a.displayTitle || a.language || a.languageCode || 'Unknown';
+                const codec = a.codec ? ` (${a.codec.toUpperCase()})` : '';
+                const channels = a.channels ? ` ${a.channels}ch` : '';
+                return `<option value="${a.id}" ${a.selected ? 'selected' : ''}>${label}${codec}${channels}</option>`;
+            }).join('');
+
+            subsSel.innerHTML = '<option value="0">ללא כתוביות</option>' + subStreams.map(s => {
+                const label = s.displayTitle || s.language || s.languageCode || 'Unknown';
+                const forced = s.forced ? ' (Forced)' : '';
+                return `<option value="${s.id}" ${s.selected ? 'selected' : ''}>${label}${forced}</option>`;
+            }).join('');
+
+            document.getElementById('mdStreams')?.classList.remove('hidden');
+            mdPendingPlay.audioStreams = audioStreams;
+            mdPendingPlay.subStreams = subStreams;
+        }
     } catch (e) {
         console.error('[Plex detail]', e);
     }
@@ -826,7 +855,7 @@ async function plexSearch(query) {
     }
 }
 
-async function playPlexItem(ratingKey, metadataType = 4) {
+async function playPlexItem(ratingKey, metadataType = 4, audioStreamId = null, subsStreamId = null) {
     if (S.busy) return;
     lockBusy();
     closePlexBrowser();
@@ -835,7 +864,13 @@ async function playPlexItem(ratingKey, metadataType = 4) {
         await ensureCinema();
         await adbLaunch('com.plexapp.android');
         await sleep(5000);
-        const playCmd = `(echo -e "GET /player/playback/playMedia?key=/library/metadata/${ratingKey}\\x26type=${metadataType}\\x26offset=0\\x26machineIdentifier=${PLEX_MACHINE}\\x26address=192.168.1.23\\x26port=32400\\x26protocol=http\\x26token=${PLEX_TK}\\x26commandID=$((RANDOM)) HTTP/1.0\\r\\nHost: 127.0.0.1\\r\\nX-Plex-Client-Identifier: onyx-remote\\r\\n\\r\\n"; sleep 3) | nc 127.0.0.1 32500 2>&1`;
+
+        let extraParams = '';
+        if (audioStreamId) extraParams += `\\x26audioStreamID=${audioStreamId}`;
+        if (subsStreamId && subsStreamId !== '0') extraParams += `\\x26subtitleStreamID=${subsStreamId}`;
+        if (subsStreamId === '0') extraParams += `\\x26subtitleStreamID=0`;
+
+        const playCmd = `(echo -e "GET /player/playback/playMedia?key=/library/metadata/${ratingKey}\\x26type=${metadataType}\\x26offset=0\\x26machineIdentifier=${PLEX_MACHINE}\\x26address=192.168.1.23\\x26port=32400\\x26protocol=http\\x26token=${PLEX_TK}${extraParams}\\x26commandID=$((RANDOM)) HTTP/1.0\\r\\nHost: 127.0.0.1\\r\\nX-Plex-Client-Identifier: onyx-remote\\r\\n\\r\\n"; sleep 3) | nc 127.0.0.1 32500 2>&1`;
         await adb(playCmd);
         await sleep(3000);
         await fetchStates();
@@ -1101,6 +1136,7 @@ async function showMovieDetail(title, tmdbId, isShow) {
     document.getElementById('mdOverview').textContent = 'טוען...';
     document.getElementById('mdPoster').src = '';
     document.getElementById('mdBackdrop').style.backgroundImage = '';
+    document.getElementById('mdStreams')?.classList.add('hidden');
 
     mdPendingPlay = { title, tmdbId, isShow };
 
@@ -1138,6 +1174,7 @@ async function showMovieDetail(title, tmdbId, isShow) {
 
 function closeMovieDetail() {
     document.getElementById('movieDetail')?.classList.add('hidden');
+    document.getElementById('mdStreams')?.classList.add('hidden');
     mdPendingPlay = null;
 }
 
@@ -1147,8 +1184,10 @@ function initMovieDetail() {
         if (!mdPendingPlay) return;
         if (mdPendingPlay.plex) {
             const rk = mdPendingPlay.ratingKey;
+            const audioId = document.getElementById('mdAudio')?.value || null;
+            const subsId = document.getElementById('mdSubs')?.value || null;
             closeMovieDetail();
-            playPlexItem(rk, 4);
+            playPlexItem(rk, 4, audioId, subsId);
         } else {
             const { title, tmdbId, isShow } = mdPendingPlay;
             closeMovieDetail();
