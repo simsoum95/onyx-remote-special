@@ -1,5 +1,5 @@
 const HA_URL = process.env.HA_URL || 'https://na4kp2cjkejmeprgklgswxssuihm0ngr.ui.nabu.casa';
-const HA_TOKEN = process.env.HA_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjNDUxY2M1NmU0OTc0MTIxOTg5MDE2ZDAxZTQyYjkxYyIsImlhdCI6MTc3MjAxOTIzOCwiZXhwIjoyMDg3Mzc5MjM4fQ.J4p3A3Tj3Nil_n3l9nsD7RMxPa_6sDqlyrhk9HyZyKg';
+const HA_TOKEN = process.env.HA_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI5ZWRkMTU5YWQ1Njc0ODQ2ODFiM2FkNTVjNjUzMGFhMCIsImlhdCI6MTc3MjQ0OTI2MywiZXhwIjoyMDg3ODA5MjYzfQ.T4VozSdRacdBWNF30TpCXaCQYmj0gzKhx3FsyGO9dZs';
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
