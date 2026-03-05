@@ -29,6 +29,12 @@
                     <div class="hdr-title">ONYX</div>
                     <div class="hdr-status"><span class="hdr-dot" id="hdrDot"></span><span id="hdrLabel">מתחבר...</span></div>
                 </div>
+                <button class="hdr-btn" id="btnFavs" title="מועדפים">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </button>
+                <button class="hdr-btn" id="btnHistory" title="היסטוריה">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </button>
                 <button class="hdr-btn" id="btnRefresh" title="רענן">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
                 </button>
@@ -120,6 +126,19 @@
             </div>
         </main>
 
+        <!-- NOW PLAYING BAR -->
+        <div id="nowPlayingBar" class="np-bar hidden">
+            <div class="np-info">
+                <div class="np-app" id="npApp"></div>
+                <div class="np-title" id="npTitle"></div>
+            </div>
+            <div class="np-controls">
+                <button class="np-btn" id="npPrev" title="אחורה">⏪</button>
+                <button class="np-btn np-play" id="npPlayPause" title="Play/Pause">⏯</button>
+                <button class="np-btn" id="npNext" title="קדימה">⏩</button>
+            </div>
+        </div>
+
         <nav id="mNav">
             <button class="mn active" data-go="apps"><span class="mn-i">📺</span><span>קולנוע</span></button>
             <button class="mn" data-go="remote"><span class="mn-i">🕹️</span><span>שלט</span></button>
@@ -202,7 +221,33 @@
                             <select class="md-stream-select" id="mdSubs"></select>
                         </div>
                     </div>
-                    <button class="md-play" id="mdPlay">▶ הפעל</button>
+                    <div class="md-actions">
+                        <button class="md-play" id="mdPlay">▶ הפעל</button>
+                        <button class="md-trailer hidden" id="mdTrailer">🎬 טריילר</button>
+                        <button class="md-fav" id="mdFav" title="הוסף למועדפים">☆</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAVORITES / HISTORY OVERLAY -->
+        <div id="favOverlay" class="plex-overlay hidden">
+            <div class="plex-header">
+                <button class="plex-back" id="favClose">✕</button>
+                <div class="plex-title" id="favTitle">מועדפים</div>
+            </div>
+            <div class="plex-content" id="favContent">
+                <div class="plex-loading">אין פריטים</div>
+            </div>
+        </div>
+
+        <!-- CONFIRM DIALOG -->
+        <div id="confirmDialog" class="confirm-overlay hidden">
+            <div class="confirm-box">
+                <div class="confirm-msg" id="confirmMsg"></div>
+                <div class="confirm-btns">
+                    <button class="confirm-btn confirm-no" id="confirmNo">ביטול</button>
+                    <button class="confirm-btn confirm-yes" id="confirmYes">אישור</button>
                 </div>
             </div>
         </div>

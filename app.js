@@ -45,7 +45,30 @@ const ALL_IDS = [
     ...CINEMA.speakers.map(s => s.id),
 ];
 
-const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false, tab: 'apps' };
+const S = { entities: {}, cinemaOn: false, busy: false, busyTimer: null, poll: null, lastVol: 30, volDragging: false, tab: 'apps', lastConnError: null };
+
+function haptic(ms = 15) { try { navigator.vibrate?.(ms); } catch {} }
+
+let confirmResolve = null;
+function showConfirm(msg) {
+    return new Promise(resolve => {
+        confirmResolve = resolve;
+        document.getElementById('confirmMsg').textContent = msg;
+        document.getElementById('confirmDialog').classList.remove('hidden');
+        haptic(25);
+    });
+}
+function initConfirm() {
+    document.getElementById('confirmYes')?.addEventListener('click', () => {
+        haptic();
+        document.getElementById('confirmDialog').classList.add('hidden');
+        if (confirmResolve) { confirmResolve(true); confirmResolve = null; }
+    });
+    document.getElementById('confirmNo')?.addEventListener('click', () => {
+        document.getElementById('confirmDialog').classList.add('hidden');
+        if (confirmResolve) { confirmResolve(false); confirmResolve = null; }
+    });
+}
 
 function lockBusy() {
     S.busy = true; setBusy(true);
@@ -57,19 +80,41 @@ function unlockBusy() { S.busy = false; setBusy(false); clearTimeout(S.busyTimer
 /* ============================================================
    API
    ============================================================ */
+function classifyError(status, err) {
+    if (status === 401 || status === 403) return { msg: '🔑 טוקן לא תקין — בדוק הרשאות', type: 'auth' };
+    if (status === 502 || status === 503) return { msg: '🏠 Home Assistant לא נגיש', type: 'ha_down' };
+    if (status === 404) return { msg: '⚠️ נתיב לא נמצא', type: 'not_found' };
+    if (err?.message?.includes('fetch') || err?.name === 'TypeError') return { msg: '📡 אין חיבור לאינטרנט', type: 'network' };
+    return { msg: `⚠️ שגיאה (${status || '?'})`, type: 'unknown' };
+}
+
+async function haFetch(path, options = {}, retries = 3) {
+    let lastStatus = 0;
+    let lastErr = null;
+    for (let i = 0; i < retries; i++) {
+        try {
+            const r = await fetch(`/api/ha?path=${encodeURIComponent(path)}`, options);
+            lastStatus = r.status;
+            if (r.ok) return r.json();
+            if (r.status === 401 || r.status === 403 || r.status === 404) break;
+        } catch (e) {
+            lastErr = e;
+        }
+        if (i < retries - 1) await sleep(1000 * (i + 1));
+    }
+    const info = classifyError(lastStatus, lastErr);
+    throw new Error(info.msg);
+}
+
 async function haGet(path) {
-    const r = await fetch(`/api/ha?path=${encodeURIComponent(path)}`);
-    if (!r.ok) throw new Error(`${r.status}`);
-    return r.json();
+    return haFetch(path);
 }
 
 async function haPost(path, body) {
-    const r = await fetch(`/api/ha?path=${encodeURIComponent(path)}`, {
+    return haFetch(path, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
-    if (!r.ok) throw new Error(`${r.status}`);
-    return r.json();
 }
 
 async function fetchStates() {
@@ -80,12 +125,17 @@ async function fetchStates() {
                 S.entities[s.entity_id] = { state: s.state, attr: s.attributes || {} };
         }
         setOnline(true); renderAll(); return true;
-    } catch (e) { console.error('[Onyx]', e); setOnline(false); return false; }
+    } catch (e) {
+        console.error('[Onyx]', e);
+        setOnline(false);
+        if (S.lastConnError !== e.message) { S.lastConnError = e.message; toast(e.message, 'error'); }
+        return false;
+    }
 }
 
 async function callSvc(domain, service, data) {
-    try { await haPost(`/api/services/${domain}/${service}`, data); return true; }
-    catch (e) { console.error('[Onyx]', e); return false; }
+    try { await haPost(`/api/services/${domain}/${service}`, data); S.lastConnError = null; return true; }
+    catch (e) { console.error('[Onyx]', e); toast(e.message, 'error'); return false; }
 }
 
 async function adb(cmd) {
@@ -342,7 +392,7 @@ async function toggleDev(id) {
 function renderAll() {
     renderStatusBar(); renderPower(); renderAudio();
     renderApps(); renderLights(); renderCurtain(); renderSpeakers();
-    renderProjectorPanel();
+    renderProjectorPanel(); renderNowPlaying();
 }
 
 function renderPower() {
@@ -539,13 +589,71 @@ function showView(id) {
     document.getElementById(id)?.classList.remove('hidden');
 }
 
-function startPoll() { if (S.poll) clearInterval(S.poll); S.poll = setInterval(fetchStates, 5000); }
+function getPollInterval() {
+    const shieldState = S.entities[SHIELD_ADB]?.state;
+    if (shieldState === 'playing') return 3000;
+    if (S.cinemaOn) return 5000;
+    return 10000;
+}
+function startPoll() {
+    if (S.poll) clearTimeout(S.poll);
+    function tick() {
+        fetchStates().then(() => {
+            S.poll = setTimeout(tick, getPollInterval());
+        });
+    }
+    S.poll = setTimeout(tick, getPollInterval());
+}
+
+function renderNowPlaying() {
+    const bar = document.getElementById('nowPlayingBar');
+    if (!bar) return;
+
+    const shieldState = S.entities[SHIELD_ADB]?.state;
+    const isPlaying = shieldState === 'playing' || shieldState === 'paused';
+    const appId = getShieldApp();
+
+    if (!isPlaying || !S.cinemaOn || !appId) {
+        bar.classList.add('hidden');
+        return;
+    }
+
+    const appInfo = APPS.find(a => a.pkg === appId);
+    const appName = appInfo?.name || appId.split('.').pop();
+    const mediaTitle = S.entities[SHIELD_MP]?.attr?.media_title
+        || S.entities[SHIELD_ADB]?.attr?.media_title || '';
+
+    document.getElementById('npApp').textContent = appName;
+    document.getElementById('npTitle').textContent = mediaTitle || appName;
+    document.getElementById('npPlayPause').textContent = shieldState === 'playing' ? '⏸' : '▶️';
+    bar.classList.remove('hidden');
+}
+
+function initNowPlaying() {
+    document.getElementById('npPlayPause')?.addEventListener('click', () => {
+        haptic(); adbKey('KEYCODE_MEDIA_PLAY_PAUSE');
+        setTimeout(fetchStates, 1000);
+    });
+    document.getElementById('npPrev')?.addEventListener('click', () => {
+        haptic(); adbKey('KEYCODE_MEDIA_REWIND');
+    });
+    document.getElementById('npNext')?.addEventListener('click', () => {
+        haptic(); adbKey('KEYCODE_MEDIA_FAST_FORWARD');
+    });
+}
 
 /* ============================================================
    EVENTS
    ============================================================ */
 function initEvents() {
-    document.getElementById('btnPower')?.addEventListener('click', () => runScene(S.cinemaOn ? 'cinema_off' : 'cinema_on'));
+    document.getElementById('btnPower')?.addEventListener('click', async () => {
+        haptic(25);
+        if (S.cinemaOn) {
+            const ok = await showConfirm('לכבות את הקולנוע?');
+            if (!ok) return;
+        }
+        runScene(S.cinemaOn ? 'cinema_off' : 'cinema_on');
+    });
 
 
     document.getElementById('btnLOn')?.addEventListener('click', () => allLights('turn_on'));
@@ -553,9 +661,9 @@ function initEvents() {
     document.getElementById('cOpen')?.addEventListener('click', () => coverAction('open'));
     document.getElementById('cClose')?.addEventListener('click', () => coverAction('close'));
 
-    document.getElementById('vDown')?.addEventListener('click', () => volStep('down'));
-    document.getElementById('vUp')?.addEventListener('click', () => volStep('up'));
-    document.getElementById('vMute')?.addEventListener('click', toggleMute);
+    document.getElementById('vDown')?.addEventListener('click', () => { haptic(); volStep('down'); });
+    document.getElementById('vUp')?.addEventListener('click', () => { haptic(); volStep('up'); });
+    document.getElementById('vMute')?.addEventListener('click', () => { haptic(25); toggleMute(); });
 
     let vt;
     const vr = document.getElementById('volRange');
@@ -578,15 +686,16 @@ function initEvents() {
 
 
     document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', () => {
+        haptic();
         b.style.transform = 'scale(0.85)';
         setTimeout(() => b.style.transform = '', 200);
         sendCmd(b.dataset.cmd);
     }));
 
-    document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.go)));
+    document.querySelectorAll('.mn').forEach(b => b.addEventListener('click', () => { haptic(10); switchTab(b.dataset.go); }));
 
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) clearInterval(S.poll);
+        if (document.hidden) clearTimeout(S.poll);
         else { fetchStates(); startPoll(); }
     });
 }
@@ -676,6 +785,7 @@ async function showPlexDetail(ratingKey) {
     document.getElementById('mdStreams')?.classList.add('hidden');
     document.getElementById('mdAudio').innerHTML = '';
     document.getElementById('mdSubs').innerHTML = '';
+    document.getElementById('mdTrailer')?.classList.add('hidden');
 
     mdPendingPlay = { plex: true, ratingKey };
 
@@ -727,6 +837,21 @@ async function showPlexDetail(ratingKey) {
             document.getElementById('mdStreams')?.classList.remove('hidden');
             mdPendingPlay.audioStreams = audioStreams;
             mdPendingPlay.subStreams = subStreams;
+        }
+
+        const favBtn = document.getElementById('mdFav');
+        if (favBtn) {
+            const favItem = { plexKey: ratingKey, title, image: poster, serviceName: 'Plex' };
+            const isFav = isFavorite(favItem);
+            favBtn.textContent = isFav ? '★' : '☆';
+            favBtn.classList.toggle('active', isFav);
+            favBtn.onclick = () => {
+                haptic();
+                const nowFav = toggleFavorite(favItem);
+                favBtn.textContent = nowFav ? '★' : '☆';
+                favBtn.classList.toggle('active', nowFav);
+                toast(nowFav ? '⭐ נוסף למועדפים' : '❌ הוסר מהמועדפים', 'info');
+            };
         }
     } catch (e) {
         console.error('[Plex detail]', e);
@@ -911,6 +1036,79 @@ const STREAM_SERVICES = {
     youtube:  { name: 'YouTube',      pkg: 'com.google.android.youtube.tv',     color: '#FF0000', searchOnly: true },
     spotify:  { name: 'Spotify',      pkg: 'com.spotify.tv.android',            color: '#1DB954', searchOnly: true },
 };
+
+function getFavorites() {
+    try { return JSON.parse(localStorage.getItem('onyx_favs') || '[]'); } catch { return []; }
+}
+function saveFavorites(list) { localStorage.setItem('onyx_favs', JSON.stringify(list.slice(0, 100))); }
+
+function toggleFavorite(item) {
+    const favs = getFavorites();
+    const key = item.plexKey || `tmdb-${item.tmdbId}`;
+    const idx = favs.findIndex(f => (f.plexKey || `tmdb-${f.tmdbId}`) === key);
+    if (idx >= 0) { favs.splice(idx, 1); } else { favs.unshift(item); }
+    saveFavorites(favs);
+    return idx < 0;
+}
+function isFavorite(item) {
+    const key = item.plexKey || `tmdb-${item.tmdbId}`;
+    return getFavorites().some(f => (f.plexKey || `tmdb-${f.tmdbId}`) === key);
+}
+
+function getHistory() {
+    try { return JSON.parse(localStorage.getItem('onyx_history') || '[]'); } catch { return []; }
+}
+function addToHistory(item) {
+    const hist = getHistory();
+    const key = item.plexKey || `tmdb-${item.tmdbId}`;
+    const idx = hist.findIndex(h => (h.plexKey || `tmdb-${h.tmdbId}`) === key);
+    if (idx >= 0) hist.splice(idx, 1);
+    item.playedAt = Date.now();
+    hist.unshift(item);
+    localStorage.setItem('onyx_history', JSON.stringify(hist.slice(0, 50)));
+}
+
+function showFavOverlay(mode) {
+    const overlay = document.getElementById('favOverlay');
+    overlay?.classList.remove('hidden');
+    document.getElementById('favTitle').textContent = mode === 'favs' ? '⭐ מועדפים' : '🕐 היסטוריה';
+
+    const items = mode === 'favs' ? getFavorites() : getHistory();
+    const content = document.getElementById('favContent');
+    if (!items.length) { content.innerHTML = `<div class="plex-loading">${mode === 'favs' ? 'אין מועדפים' : 'אין היסטוריה'}</div>`; return; }
+
+    const esc = s => (s || '').replace(/"/g, '&quot;');
+    content.innerHTML = `<div class="plex-grid">${items.map(item => {
+        const timeStr = item.playedAt ? new Date(item.playedAt).toLocaleDateString('he-IL') : '';
+        return `<div class="plex-card stream-card" data-title="${esc(item.title)}" data-tmdb="${item.tmdbId || ''}" data-show="${item.isShow ? '1' : '0'}" data-plexkey="${item.plexKey || ''}" data-svc="${item.serviceId || ''}">
+            ${item.image ? `<img src="${item.image}" alt="${esc(item.title)}" loading="lazy" onerror="this.style.display='none'">` : ''}
+            <div class="plex-card-info">
+                <div class="plex-card-title">${item.title}</div>
+                <div class="plex-card-year">${item.serviceName || ''} ${timeStr ? '• ' + timeStr : ''}</div>
+            </div>
+        </div>`;
+    }).join('')}</div>`;
+
+    content.querySelectorAll('.stream-card').forEach(c => {
+        c.addEventListener('click', () => {
+            overlay.classList.add('hidden');
+            if (c.dataset.plexkey) {
+                showPlexDetail(c.dataset.plexkey);
+            } else if (c.dataset.tmdb) {
+                if (c.dataset.svc) activeStreamId = c.dataset.svc;
+                showMovieDetail(c.dataset.title, c.dataset.tmdb, c.dataset.show === '1');
+            }
+        });
+    });
+}
+
+function initFavHistory() {
+    document.getElementById('btnFavs')?.addEventListener('click', () => { haptic(); showFavOverlay('favs'); });
+    document.getElementById('btnHistory')?.addEventListener('click', () => { haptic(); showFavOverlay('history'); });
+    document.getElementById('favClose')?.addEventListener('click', () => {
+        document.getElementById('favOverlay')?.classList.add('hidden');
+    });
+}
 
 let activeStreamId = null;
 let streamSearchTimer = null;
@@ -1166,7 +1364,39 @@ async function showMovieDetail(title, tmdbId, isShow) {
         document.getElementById('mdGenres').innerHTML = genres.map(g => `<span>${g}</span>`).join('');
         document.getElementById('mdOverview').textContent = overview || 'אין תקציר זמין';
 
-        mdPendingPlay = { title: origTitle, tmdbId, isShow };
+        mdPendingPlay = { title: origTitle, tmdbId, isShow, image: poster, serviceId: activeStreamId, serviceName: STREAM_SERVICES[activeStreamId]?.name || '' };
+
+        const favBtn = document.getElementById('mdFav');
+        if (favBtn) {
+            const isFav = isFavorite({ tmdbId });
+            favBtn.textContent = isFav ? '★' : '☆';
+            favBtn.classList.toggle('active', isFav);
+            favBtn.onclick = () => {
+                haptic();
+                const nowFav = toggleFavorite({ title: origTitle, tmdbId, isShow, image: poster, serviceId: activeStreamId, serviceName: STREAM_SERVICES[activeStreamId]?.name || '' });
+                favBtn.textContent = nowFav ? '★' : '☆';
+                favBtn.classList.toggle('active', nowFav);
+                toast(nowFav ? '⭐ נוסף למועדפים' : '❌ הוסר מהמועדפים', 'info');
+            };
+        }
+
+        const trailerBtn = document.getElementById('mdTrailer');
+        trailerBtn?.classList.add('hidden');
+        try {
+            const videos = await tmdbGet(`/${type}/${tmdbId}/videos?language=he-IL`);
+            let trailer = (videos?.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube');
+            if (!trailer) {
+                const videosEn = await tmdbGet(`/${type}/${tmdbId}/videos?language=en-US`);
+                trailer = (videosEn?.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube');
+            }
+            if (trailer) {
+                trailerBtn?.classList.remove('hidden');
+                trailerBtn.onclick = () => {
+                    haptic();
+                    window.open(`https://www.youtube.com/watch?v=${trailer.key}`, '_blank');
+                };
+            }
+        } catch {}
     } catch (e) {
         console.error('[TMDB detail]', e);
     }
@@ -1175,6 +1405,7 @@ async function showMovieDetail(title, tmdbId, isShow) {
 function closeMovieDetail() {
     document.getElementById('movieDetail')?.classList.add('hidden');
     document.getElementById('mdStreams')?.classList.add('hidden');
+    document.getElementById('mdTrailer')?.classList.add('hidden');
     mdPendingPlay = null;
 }
 
@@ -1182,6 +1413,8 @@ function initMovieDetail() {
     document.getElementById('mdClose')?.addEventListener('click', closeMovieDetail);
     document.getElementById('mdPlay')?.addEventListener('click', () => {
         if (!mdPendingPlay) return;
+        haptic();
+        addToHistory({ ...mdPendingPlay });
         if (mdPendingPlay.plex) {
             const rk = mdPendingPlay.ratingKey;
             const audioId = document.getElementById('mdAudio')?.value || null;
@@ -1451,6 +1684,9 @@ async function init() {
     initPlexEvents();
     initStreamEvents();
     initMovieDetail();
+    initNowPlaying();
+    initConfirm();
+    initFavHistory();
     switchTab('apps');
     const ok = await fetchStates();
     showView('app');
