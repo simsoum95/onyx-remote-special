@@ -17,7 +17,7 @@ const APPS = [
     { name: 'Prime Video', pkg: 'com.amazon.amazonvideo.livingroom', logo: '/img/prime.png' },
     { name: 'Apple TV', pkg: 'com.apple.atve.androidtv.appletv', logo: 'https://cdn.simpleicons.org/appletv/FFFFFF' },
     { name: 'Disney+', pkg: 'com.disney.disneyplus', logo: '/img/disney.png' },
-    { name: 'Spotify', pkg: 'com.spotify.tv.android', logo: 'https://cdn.simpleicons.org/spotify/1DB954' },
+    { name: 'Shimon TV', pkg: null, logo: '/img/shimon.svg', iptv: true },
     { name: 'PS5', pkg: null, input: 'GAME', logo: 'https://cdn.simpleicons.org/playstation/FFFFFF', console: true },
 ];
 
@@ -443,6 +443,7 @@ function renderApps() {
             t.addEventListener('click', () => {
                 const a = APPS[parseInt(t.dataset.idx)];
                 if (a.name === 'Plex') { openPlexBrowser(); return; }
+                if (a.iptv) { openIptvBrowser(); return; }
                 const svcId = Object.keys(STREAM_SERVICES).find(k => STREAM_SERVICES[k].pkg === a.pkg);
                 if (svcId) { openStreamBrowser(svcId); return; }
                 if (a.console) smartConsole(a);
@@ -1034,7 +1035,6 @@ const STREAM_SERVICES = {
     prime:    { name: 'Prime Video',  pkg: 'com.amazon.amazonvideo.livingroom', color: '#00A8E1', tmdbProvider: 119 },
     appletv:  { name: 'Apple TV',     pkg: 'com.apple.atve.androidtv.appletv',  color: '#a1a1a1', tmdbProvider: 350 },
     youtube:  { name: 'YouTube',      pkg: 'com.google.android.youtube.tv',     color: '#FF0000', searchOnly: true },
-    spotify:  { name: 'Spotify',      pkg: 'com.spotify.tv.android',            color: '#1DB954', searchOnly: true },
 };
 
 function getFavorites() {
@@ -1676,6 +1676,156 @@ function initStreamEvents() {
 }
 
 /* ============================================================
+   SHIMON TV — IPTV
+   ============================================================ */
+const IPTV_SOURCES = {
+    il:            'https://iptv-org.github.io/iptv/countries/il.m3u',
+    sports:        'https://iptv-org.github.io/iptv/categories/sports.m3u',
+    fra:           'https://iptv-org.github.io/iptv/countries/fr.m3u',
+    kids:          'https://iptv-org.github.io/iptv/categories/kids.m3u',
+    movies:        'https://iptv-org.github.io/iptv/categories/movies.m3u',
+    news:          'https://iptv-org.github.io/iptv/categories/news.m3u',
+    music:         'https://iptv-org.github.io/iptv/categories/music.m3u',
+    entertainment: 'https://iptv-org.github.io/iptv/categories/entertainment.m3u',
+    documentary:   'https://iptv-org.github.io/iptv/categories/documentary.m3u',
+    all:           'https://iptv-org.github.io/iptv/index.m3u',
+};
+
+const iptvCache = {};
+let iptvSearchTimer = null;
+
+function parseM3U(text) {
+    const channels = [];
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line.startsWith('#EXTINF:')) continue;
+        const nameMatch = line.match(/,(.+)$/);
+        const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+        const groupMatch = line.match(/group-title="([^"]*)"/);
+        const url = (lines[i + 1] || '').trim();
+        if (!url || url.startsWith('#')) continue;
+        channels.push({
+            name: nameMatch?.[1]?.trim() || 'Unknown',
+            logo: logoMatch?.[1] || '',
+            group: groupMatch?.[1] || '',
+            url,
+        });
+    }
+    return channels;
+}
+
+async function loadIptvCategory(cat) {
+    const content = document.getElementById('iptvContent');
+    if (!content) return;
+    content.innerHTML = '<div class="plex-loading">טוען ערוצים...</div>';
+
+    document.querySelectorAll('#iptvTabs .stream-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.iptv === cat)
+    );
+
+    try {
+        if (!iptvCache[cat]) {
+            const resp = await fetch(IPTV_SOURCES[cat]);
+            if (!resp.ok) throw new Error(`${resp.status}`);
+            const text = await resp.text();
+            iptvCache[cat] = parseM3U(text);
+        }
+        renderIptvChannels(iptvCache[cat], content);
+    } catch (e) {
+        console.error('[IPTV]', e);
+        content.innerHTML = '<div class="plex-loading">שגיאה בטעינה</div>';
+    }
+}
+
+function renderIptvChannels(channels, container) {
+    if (!channels.length) {
+        container.innerHTML = '<div class="plex-loading">אין ערוצים</div>';
+        return;
+    }
+    const esc = s => (s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    container.innerHTML = `<div class="iptv-grid">${channels.map((ch, i) => {
+        return `<div class="iptv-card" data-idx="${i}">
+            ${ch.logo ? `<img src="${ch.logo}" alt="" loading="lazy" onerror="this.style.display='none'">` : '<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:rgba(255,255,255,0.05);border-radius:8px">📺</div>'}
+            <div class="iptv-name">${esc(ch.name)}</div>
+            ${ch.group ? `<div class="iptv-group">${esc(ch.group)}</div>` : ''}
+        </div>`;
+    }).join('')}</div>`;
+
+    container.querySelectorAll('.iptv-card').forEach(card => {
+        card.addEventListener('click', () => {
+            haptic();
+            const ch = channels[parseInt(card.dataset.idx)];
+            playIptvChannel(ch);
+        });
+    });
+}
+
+async function playIptvChannel(ch) {
+    if (S.busy) return;
+    lockBusy();
+    closeIptvBrowser();
+    toast(`📺 ${ch.name}...`, 'info');
+    try {
+        await ensureCinema();
+        const url = ch.url.replace(/"/g, '\\"');
+        await adb(`am start -a android.intent.action.VIEW -d "${url}" -t "video/*"`);
+        await sleep(3000);
+        await fetchStates();
+        toast(`✅ ${ch.name} — מוכן!`, 'success');
+    } catch (e) {
+        console.error(e);
+        toast('⚠️ שגיאה', 'error');
+    }
+    unlockBusy();
+}
+
+function searchIptvChannels(query) {
+    const activeTab = document.querySelector('#iptvTabs .stream-tab.active');
+    const cat = activeTab?.dataset.iptv || 'il';
+    const channels = iptvCache[cat];
+    if (!channels) return;
+
+    const content = document.getElementById('iptvContent');
+    if (!query || query.length < 2) { renderIptvChannels(channels, content); return; }
+
+    const q = query.toLowerCase();
+    const filtered = channels.filter(ch =>
+        ch.name.toLowerCase().includes(q) || ch.group.toLowerCase().includes(q)
+    );
+    renderIptvChannels(filtered, content);
+}
+
+function openIptvBrowser() {
+    document.getElementById('iptvOverlay')?.classList.remove('hidden');
+    document.getElementById('iptvSearch').value = '';
+    loadIptvCategory('il');
+}
+
+function closeIptvBrowser() {
+    document.getElementById('iptvOverlay')?.classList.add('hidden');
+}
+
+function initIptvEvents() {
+    document.getElementById('iptvClose')?.addEventListener('click', closeIptvBrowser);
+
+    document.querySelectorAll('#iptvTabs .stream-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.getElementById('iptvSearch').value = '';
+            loadIptvCategory(tab.dataset.iptv);
+        });
+    });
+
+    const si = document.getElementById('iptvSearch');
+    if (si) {
+        si.addEventListener('input', () => {
+            clearTimeout(iptvSearchTimer);
+            iptvSearchTimer = setTimeout(() => searchIptvChannels(si.value.trim()), 300);
+        });
+    }
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 async function init() {
@@ -1687,6 +1837,7 @@ async function init() {
     initNowPlaying();
     initConfirm();
     initFavHistory();
+    initIptvEvents();
     switchTab('apps');
     const ok = await fetchStates();
     showView('app');

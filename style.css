@@ -771,6 +771,36 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3);
 }
 
+/* IPTV CHANNEL CARDS */
+.iptv-card {
+    position: relative; border-radius: 12px; overflow: hidden;
+    background: var(--glass); border: 1px solid var(--gb);
+    cursor: pointer; transition: var(--tr);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 12px 6px 8px; gap: 6px; min-height: 100px;
+}
+.iptv-card:active { transform: scale(0.95); border-color: var(--neon); }
+.iptv-card img {
+    width: 56px; height: 56px; object-fit: contain;
+    border-radius: 8px; background: rgba(255,255,255,0.05);
+}
+.iptv-card .iptv-name {
+    font-size: 0.65rem; color: var(--t1);
+    text-align: center; line-height: 1.2;
+    font-weight: 600; max-height: 2.4em;
+    overflow: hidden;
+}
+.iptv-card .iptv-group {
+    font-size: 0.55rem; color: var(--t3);
+    text-align: center;
+}
+.iptv-card.playing { border-color: var(--neon); background: rgba(0,212,255,0.08); }
+.iptv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+    gap: 8px; padding: 8px;
+}
+
 /* ============================================================
    SMALL MOBILE (<375px) — iPhone SE
    ============================================================ */

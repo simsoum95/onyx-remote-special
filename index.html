@@ -230,6 +230,32 @@
             </div>
         </div>
 
+        <!-- SHIMON TV — IPTV BROWSER -->
+        <div id="iptvOverlay" class="plex-overlay hidden">
+            <div class="plex-header">
+                <button class="plex-back" id="iptvClose">✕</button>
+                <div class="plex-title" style="color:#00d4ff">SHIMON TV</div>
+                <div class="plex-search-wrap">
+                    <input type="search" class="plex-search" id="iptvSearch" placeholder="🔍 חיפוש ערוץ..." autocomplete="off">
+                </div>
+                <div class="stream-tabs" id="iptvTabs">
+                    <button class="stream-tab active" data-iptv="il">🇮🇱 ישראל</button>
+                    <button class="stream-tab" data-iptv="sports">⚽ ספורט</button>
+                    <button class="stream-tab" data-iptv="fra">🇫🇷 צרפת</button>
+                    <button class="stream-tab" data-iptv="kids">👶 ילדים</button>
+                    <button class="stream-tab" data-iptv="movies">🎬 סרטים</button>
+                    <button class="stream-tab" data-iptv="news">📰 חדשות</button>
+                    <button class="stream-tab" data-iptv="music">🎵 מוזיקה</button>
+                    <button class="stream-tab" data-iptv="entertainment">📺 בידור</button>
+                    <button class="stream-tab" data-iptv="documentary">🎥 דוקו</button>
+                    <button class="stream-tab" data-iptv="all">🌍 הכל</button>
+                </div>
+            </div>
+            <div class="plex-content" id="iptvContent">
+                <div class="plex-loading">טוען ערוצים...</div>
+            </div>
+        </div>
+
         <!-- FAVORITES / HISTORY OVERLAY -->
         <div id="favOverlay" class="plex-overlay hidden">
             <div class="plex-header">
